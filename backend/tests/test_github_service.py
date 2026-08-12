@@ -23,7 +23,9 @@ def test_resolve_repo_full_name_accepts_valid_references(raw_input):
     assert resolve_repo_full_name(raw_input) == "octocat/hello-world"
 
 
-@pytest.mark.parametrize("raw_input", ["not a repo", "just-one-segment", "", "   ", "https://gitlab.com/a/b"])
+@pytest.mark.parametrize(
+    "raw_input", ["not a repo", "just-one-segment", "", "   ", "https://gitlab.com/a/b"]
+)
 def test_resolve_repo_full_name_rejects_invalid_references(raw_input):
     with pytest.raises(InvalidRepositoryReferenceError):
         resolve_repo_full_name(raw_input)

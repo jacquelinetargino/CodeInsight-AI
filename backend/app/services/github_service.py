@@ -20,12 +20,31 @@ GITHUB_API_BASE = "https://api.github.com"
 # Arquivos priorizados na coleta de contexto para a IA (manifestos, configs, docs
 # e também indícios de testes, usados pela dimensão "tests").
 KEY_FILE_CANDIDATES = [
-    "README.md", "package.json", "requirements.txt", "pyproject.toml",
-    "Dockerfile", "docker-compose.yml", ".github/workflows", "go.mod",
-    "Cargo.toml", "pom.xml", "composer.json", "Gemfile",
-    ".env.example", "tsconfig.json", "SECURITY.md", "LICENSE",
-    "tests/", "test/", "__tests__/", "spec/",
-    "pytest.ini", "jest.config", "vitest.config", ".coveragerc", "tox.ini",
+    "README.md",
+    "package.json",
+    "requirements.txt",
+    "pyproject.toml",
+    "Dockerfile",
+    "docker-compose.yml",
+    ".github/workflows",
+    "go.mod",
+    "Cargo.toml",
+    "pom.xml",
+    "composer.json",
+    "Gemfile",
+    ".env.example",
+    "tsconfig.json",
+    "SECURITY.md",
+    "LICENSE",
+    "tests/",
+    "test/",
+    "__tests__/",
+    "spec/",
+    "pytest.ini",
+    "jest.config",
+    "vitest.config",
+    ".coveragerc",
+    "tox.ini",
 ]
 MAX_FILES_FETCHED = 25
 MAX_FILE_SIZE_BYTES = 60_000
@@ -50,7 +69,8 @@ def resolve_repo_full_name(repo_input: str) -> str:
     match = _REPO_URL_RE.match(value) or _OWNER_REPO_RE.match(value)
     if not match:
         raise InvalidRepositoryReferenceError(
-            f"'{repo_input}' não parece um repositório válido do GitHub (use 'owner/repo' ou a URL)."
+            f"'{repo_input}' não parece um repositório válido do GitHub "
+            "(use 'owner/repo' ou a URL)."
         )
     return f"{match.group('owner')}/{match.group('repo')}"
 
@@ -73,9 +93,13 @@ def _headers(access_token: str | None) -> dict[str, str]:
     return headers
 
 
-async def _get(path: str, access_token: str | None, params: dict[str, Any] | None = None) -> httpx.Response:
+async def _get(
+    path: str, access_token: str | None, params: dict[str, Any] | None = None
+) -> httpx.Response:
     async with httpx.AsyncClient(timeout=20) as client:
-        return await client.get(f"{GITHUB_API_BASE}{path}", headers=_headers(access_token), params=params)
+        return await client.get(
+            f"{GITHUB_API_BASE}{path}", headers=_headers(access_token), params=params
+        )
 
 
 async def get_authenticated_user(access_token: str) -> dict[str, Any]:
@@ -84,11 +108,18 @@ async def get_authenticated_user(access_token: str) -> dict[str, Any]:
     return resp.json()
 
 
-async def list_user_repositories(access_token: str, page: int = 1, per_page: int = 30) -> list[dict[str, Any]]:
+async def list_user_repositories(
+    access_token: str, page: int = 1, per_page: int = 30
+) -> list[dict[str, Any]]:
     resp = await _get(
         "/user/repos",
         access_token,
-        params={"sort": "updated", "per_page": per_page, "page": page, "affiliation": "owner,collaborator"},
+        params={
+            "sort": "updated",
+            "per_page": per_page,
+            "page": page,
+            "affiliation": "owner,collaborator",
+        },
     )
     resp.raise_for_status()
     return resp.json()
@@ -106,19 +137,25 @@ async def get_languages(access_token: str | None, full_name: str) -> dict[str, i
     return resp.json()
 
 
-async def list_branches(access_token: str | None, full_name: str, limit: int = 20) -> list[dict[str, Any]]:
+async def list_branches(
+    access_token: str | None, full_name: str, limit: int = 20
+) -> list[dict[str, Any]]:
     resp = await _get(f"/repos/{full_name}/branches", access_token, params={"per_page": limit})
     resp.raise_for_status()
     return resp.json()
 
 
-async def list_commits(access_token: str | None, full_name: str, limit: int = 20) -> list[dict[str, Any]]:
+async def list_commits(
+    access_token: str | None, full_name: str, limit: int = 20
+) -> list[dict[str, Any]]:
     resp = await _get(f"/repos/{full_name}/commits", access_token, params={"per_page": limit})
     resp.raise_for_status()
     return resp.json()
 
 
-async def list_issues(access_token: str | None, full_name: str, limit: int = 20) -> list[dict[str, Any]]:
+async def list_issues(
+    access_token: str | None, full_name: str, limit: int = 20
+) -> list[dict[str, Any]]:
     """A rota /issues do GitHub retorna issues E pull requests juntos — filtramos
     fora os PRs (identificáveis pela presença da chave "pull_request")."""
     resp = await _get(
@@ -128,7 +165,9 @@ async def list_issues(access_token: str | None, full_name: str, limit: int = 20)
     return [item for item in resp.json() if "pull_request" not in item]
 
 
-async def list_pull_requests(access_token: str | None, full_name: str, limit: int = 20) -> list[dict[str, Any]]:
+async def list_pull_requests(
+    access_token: str | None, full_name: str, limit: int = 20
+) -> list[dict[str, Any]]:
     resp = await _get(
         f"/repos/{full_name}/pulls", access_token, params={"state": "all", "per_page": limit}
     )
@@ -136,7 +175,9 @@ async def list_pull_requests(access_token: str | None, full_name: str, limit: in
     return resp.json()
 
 
-async def list_contributors(access_token: str | None, full_name: str, limit: int = 20) -> list[dict[str, Any]]:
+async def list_contributors(
+    access_token: str | None, full_name: str, limit: int = 20
+) -> list[dict[str, Any]]:
     resp = await _get(f"/repos/{full_name}/contributors", access_token, params={"per_page": limit})
     if resp.status_code == 204:  # repositório sem commits ainda
         return []
@@ -144,8 +185,12 @@ async def list_contributors(access_token: str | None, full_name: str, limit: int
     return resp.json()
 
 
-async def get_file_tree(access_token: str | None, full_name: str, branch: str) -> list[dict[str, Any]]:
-    resp = await _get(f"/repos/{full_name}/git/trees/{branch}", access_token, params={"recursive": "1"})
+async def get_file_tree(
+    access_token: str | None, full_name: str, branch: str
+) -> list[dict[str, Any]]:
+    resp = await _get(
+        f"/repos/{full_name}/git/trees/{branch}", access_token, params={"recursive": "1"}
+    )
     resp.raise_for_status()
     return resp.json().get("tree", [])
 
@@ -171,7 +216,9 @@ async def collect_repository_context(
     tree = await get_file_tree(access_token, full_name, branch)
     file_paths = [item["path"] for item in tree if item.get("type") == "blob"]
 
-    prioritized = [p for p in file_paths if any(p == c or p.startswith(c) for c in KEY_FILE_CANDIDATES)]
+    prioritized = [
+        p for p in file_paths if any(p == c or p.startswith(c) for c in KEY_FILE_CANDIDATES)
+    ]
     remaining = [p for p in file_paths if p not in prioritized]
     selected = (prioritized + remaining)[:MAX_FILES_FETCHED]
 

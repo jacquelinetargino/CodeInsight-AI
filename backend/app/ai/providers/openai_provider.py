@@ -10,7 +10,9 @@ class OpenAIProvider(AIProvider):
         self.model = model
         self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
 
-    async def generate_text(self, system_prompt: str, user_prompt: str, max_tokens: int = 4096) -> str:
+    async def generate_text(
+        self, system_prompt: str, user_prompt: str, max_tokens: int = 4096
+    ) -> str:
         response = await self._client.chat.completions.create(
             model=self.model,
             max_tokens=max_tokens,

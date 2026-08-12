@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from app.api.routes import analysis, auth, dashboard, reports, repos, settings as settings_routes
+from app.api.routes import analysis, auth, dashboard, reports, repos
+from app.api.routes import settings as settings_routes
 from app.core.config import get_settings
 from app.core.limiter import limiter
 

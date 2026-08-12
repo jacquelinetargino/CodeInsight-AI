@@ -25,5 +25,7 @@ class Repository(Base):
 
     user: Mapped["User"] = relationship(back_populates="repositories")  # noqa: F821
     analyses: Mapped[list["Analysis"]] = relationship(  # noqa: F821
-        back_populates="repository", cascade="all, delete-orphan", order_by="Analysis.created_at.desc()"
+        back_populates="repository",
+        cascade="all, delete-orphan",
+        order_by="Analysis.created_at.desc()",
     )

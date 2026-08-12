@@ -4,6 +4,7 @@ Revision ID: 0001
 Revises:
 Create Date: 2026-01-01 00:00:00
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -18,11 +19,25 @@ depends_on: Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    analysis_status = pg.ENUM("queued", "running", "done", "failed", name="analysis_status")
-    analysis_dimension = pg.ENUM(
-        "security", "quality", "architecture", "documentation", "tests", "git", name="analysis_dimension"
+    # create_type=False: os tipos são criados manualmente logo abaixo (via
+    # .create(checkfirst=True)). Sem isso, op.create_table() tentaria criar o
+    # mesmo tipo de novo ao criar a tabela, batendo em "type already exists".
+    analysis_status = pg.ENUM(
+        "queued", "running", "done", "failed", name="analysis_status", create_type=False
     )
-    suggestion_severity = pg.ENUM("low", "medium", "high", "critical", name="suggestion_severity")
+    analysis_dimension = pg.ENUM(
+        "security",
+        "quality",
+        "architecture",
+        "documentation",
+        "tests",
+        "git",
+        name="analysis_dimension",
+        create_type=False,
+    )
+    suggestion_severity = pg.ENUM(
+        "low", "medium", "high", "critical", name="suggestion_severity", create_type=False
+    )
 
     bind = op.get_bind()
     analysis_status.create(bind, checkfirst=True)
@@ -57,7 +72,10 @@ def upgrade() -> None:
         "repositories",
         sa.Column("id", pg.UUID(as_uuid=True), primary_key=True),
         sa.Column(
-            "user_id", pg.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+            "user_id",
+            pg.UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="CASCADE"),
+            nullable=False,
         ),
         sa.Column("github_repo_id", sa.BigInteger, nullable=False, index=True),
         sa.Column("full_name", sa.String(255), nullable=False),

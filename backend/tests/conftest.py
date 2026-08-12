@@ -2,7 +2,9 @@ import os
 import uuid
 from collections.abc import AsyncGenerator
 
-os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://codeinsight:codeinsight@localhost:5432/codeinsight_test")
+os.environ.setdefault(
+    "DATABASE_URL", "postgresql+asyncpg://codeinsight:codeinsight@localhost:5432/codeinsight_test"
+)
 os.environ.setdefault("JWT_SECRET", "test-secret-key")
 os.environ.setdefault("ENCRYPTION_KEY", "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=")
 os.environ.setdefault("AI_PROVIDER", "claude")
@@ -92,7 +94,9 @@ class ScriptedAIProvider(AIProvider):
         self._text_responses = list(text_responses or [])
         self._json_responses = list(json_responses or [])
 
-    async def generate_text(self, system_prompt: str, user_prompt: str, max_tokens: int = 4096) -> str:
+    async def generate_text(
+        self, system_prompt: str, user_prompt: str, max_tokens: int = 4096
+    ) -> str:
         return self._text_responses.pop(0)
 
     async def generate_json(self, system_prompt: str, user_prompt: str, max_tokens: int = 4096):

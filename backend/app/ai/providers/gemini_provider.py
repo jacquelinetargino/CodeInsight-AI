@@ -13,7 +13,9 @@ class GeminiProvider(AIProvider):
         genai.configure(api_key=api_key)
         self.model_name = model
 
-    async def generate_text(self, system_prompt: str, user_prompt: str, max_tokens: int = 4096) -> str:
+    async def generate_text(
+        self, system_prompt: str, user_prompt: str, max_tokens: int = 4096
+    ) -> str:
         model = genai.GenerativeModel(self.model_name, system_instruction=system_prompt)
         response = await model.generate_content_async(
             user_prompt,

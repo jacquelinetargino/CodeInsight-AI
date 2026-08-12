@@ -19,7 +19,9 @@ class Suggestion(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     severity: Mapped[Severity] = mapped_column(
-        Enum(Severity, name="suggestion_severity", values_callable=lambda obj: [e.value for e in obj]),
+        Enum(
+            Severity, name="suggestion_severity", values_callable=lambda obj: [e.value for e in obj]
+        ),
         default=Severity.MEDIUM,
     )
     file_path: Mapped[str | None] = mapped_column(String(1024))

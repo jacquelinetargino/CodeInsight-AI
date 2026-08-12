@@ -10,7 +10,14 @@ RESERVED_KEYS = {"__file_tree__", "__git_activity__"}
 
 def format_repo_context(full_name: str, files: dict[str, str]) -> str:
     file_tree = files.get("__file_tree__", "")
-    parts = [f"Repositório: {full_name}", "", "Árvore de arquivos:", file_tree, "", "Conteúdo dos arquivos:"]
+    parts = [
+        f"Repositório: {full_name}",
+        "",
+        "Árvore de arquivos:",
+        file_tree,
+        "",
+        "Conteúdo dos arquivos:",
+    ]
 
     for path, content in files.items():
         if path in RESERVED_KEYS:

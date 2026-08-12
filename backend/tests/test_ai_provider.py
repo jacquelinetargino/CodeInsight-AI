@@ -18,7 +18,9 @@ class _FakeProvider(AIProvider):
     def __init__(self, canned_text: str) -> None:
         self._canned_text = canned_text
 
-    async def generate_text(self, system_prompt: str, user_prompt: str, max_tokens: int = 4096) -> str:
+    async def generate_text(
+        self, system_prompt: str, user_prompt: str, max_tokens: int = 4096
+    ) -> str:
         return self._canned_text
 
 

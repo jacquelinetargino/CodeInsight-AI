@@ -42,10 +42,14 @@ async def test_dashboard_summary_reflects_completed_analyses(
         }
 
     monkeypatch.setattr("app.api.routes.repos.github_service.get_repository", fake_get_repository)
-    monkeypatch.setattr("app.api.routes.analysis.run_repository_analysis.delay", lambda analysis_id: None)
+    monkeypatch.setattr(
+        "app.api.routes.analysis.run_repository_analysis.delay", lambda analysis_id: None
+    )
 
     headers = authed_client_factory(test_user.id)
-    repo_response = await client.post(f"{PREFIX}/repos", json={"repo": "octocat/dashboard-demo"}, headers=headers)
+    repo_response = await client.post(
+        f"{PREFIX}/repos", json={"repo": "octocat/dashboard-demo"}, headers=headers
+    )
     repo_id = repo_response.json()["id"]
 
     analysis_response = await client.post(

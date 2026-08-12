@@ -48,7 +48,8 @@ async def list_my_github_repositories(
     if credential is None:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            "Conecte um Personal Access Token do GitHub em Configurações para listar seus repositórios.",
+            "Conecte um Personal Access Token do GitHub em Configurações "
+            "para listar seus repositórios.",
         )
 
     access_token = decrypt_secret(credential.token_encrypted)
@@ -159,7 +160,9 @@ async def get_github_summary(
 
     return GithubRepoSummary(
         languages=languages,
-        branches=[BranchSummary(name=b["name"], protected=b.get("protected", False)) for b in branches],
+        branches=[
+            BranchSummary(name=b["name"], protected=b.get("protected", False)) for b in branches
+        ],
         recent_commits=[
             CommitSummary(
                 sha=c["sha"][:7],
@@ -170,7 +173,9 @@ async def get_github_summary(
             for c in commits
         ],
         issues=[
-            IssueSummary(number=i["number"], title=i["title"], state=i["state"], created_at=i["created_at"])
+            IssueSummary(
+                number=i["number"], title=i["title"], state=i["state"], created_at=i["created_at"]
+            )
             for i in issues
         ],
         pull_requests=[
@@ -185,7 +190,9 @@ async def get_github_summary(
         ],
         contributors=[
             ContributorSummary(
-                username=c["login"], avatar_url=c.get("avatar_url"), contributions=c.get("contributions", 0)
+                username=c["login"],
+                avatar_url=c.get("avatar_url"),
+                contributions=c.get("contributions", 0),
             )
             for c in contributors
         ],

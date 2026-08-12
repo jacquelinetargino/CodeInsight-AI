@@ -5,7 +5,11 @@ PREFIX = settings.api_v1_prefix
 
 
 async def test_register_creates_user_and_returns_token(client):
-    payload = {"email": "new.user@example.com", "password": "supersecret123", "username": "new_user"}
+    payload = {
+        "email": "new.user@example.com",
+        "password": "supersecret123",
+        "username": "new_user",
+    }
     response = await client.post(f"{PREFIX}/auth/register", json=payload)
 
     assert response.status_code == 201
@@ -18,7 +22,11 @@ async def test_register_creates_user_and_returns_token(client):
 
 
 async def test_register_rejects_duplicate_email(client, test_user):
-    payload = {"email": test_user.email, "password": "anotherpassword123", "username": "someone_else"}
+    payload = {
+        "email": test_user.email,
+        "password": "anotherpassword123",
+        "username": "someone_else",
+    }
     response = await client.post(f"{PREFIX}/auth/register", json=payload)
     assert response.status_code == 409
 
@@ -57,7 +65,9 @@ async def test_me_requires_authentication(client):
 
 
 async def test_me_rejects_garbage_token(client):
-    response = await client.get(f"{PREFIX}/auth/me", headers={"Authorization": "Bearer not-a-real-token"})
+    response = await client.get(
+        f"{PREFIX}/auth/me", headers={"Authorization": "Bearer not-a-real-token"}
+    )
     assert response.status_code == 401
 
 

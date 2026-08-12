@@ -18,9 +18,9 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    github_credential: Mapped["GithubCredential | None"] = relationship(
+    github_credential: Mapped["GithubCredential | None"] = relationship(  # noqa: F821
         back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
-    repositories: Mapped[list["Repository"]] = relationship(
+    repositories: Mapped[list["Repository"]] = relationship(  # noqa: F821
         back_populates="user", cascade="all, delete-orphan"
     )

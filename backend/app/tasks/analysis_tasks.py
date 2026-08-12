@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.ai.factory import get_ai_provider
 from app.core.celery_app import celery_app
@@ -65,13 +65,13 @@ async def _run_repository_analysis(analysis_id: uuid.UUID) -> None:
 
             analysis.overall_score = analysis_service.compute_overall_score(scores)
             analysis.status = AnalysisStatus.DONE
-            analysis.finished_at = datetime.now(timezone.utc)
-            repository.last_synced_at = datetime.now(timezone.utc)
+            analysis.finished_at = datetime.now(UTC)
+            repository.last_synced_at = datetime.now(UTC)
             await db.commit()
 
         except Exception as exc:  # noqa: BLE001
             logger.exception("Falha ao analisar repositório %s", analysis_id)
             analysis.status = AnalysisStatus.FAILED
             analysis.error_message = str(exc)[:2000]
-            analysis.finished_at = datetime.now(timezone.utc)
+            analysis.finished_at = datetime.now(UTC)
             await db.commit()

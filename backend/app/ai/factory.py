@@ -40,4 +40,6 @@ def get_ai_provider() -> AIProvider:
             f"Opções válidas: {', '.join(sorted(_PROVIDERS))}."
         )
 
-    return provider_cls(api_key=settings.ai_api_key, model=settings.ai_model, base_url=settings.ai_base_url)
+    return provider_cls(
+        api_key=settings.ai_api_key, model=settings.ai_model, base_url=settings.ai_base_url
+    )

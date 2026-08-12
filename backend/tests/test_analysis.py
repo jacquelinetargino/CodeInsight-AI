@@ -48,7 +48,9 @@ async def test_create_analysis_enqueues_task(client, test_user, authed_client_fa
     headers = authed_client_factory(test_user.id)
     repo_id = await _add_repo(client, headers, monkeypatch)
 
-    response = await client.post(f"{PREFIX}/analysis", json={"repository_id": repo_id}, headers=headers)
+    response = await client.post(
+        f"{PREFIX}/analysis", json={"repository_id": repo_id}, headers=headers
+    )
 
     assert response.status_code == 202
     body = response.json()
@@ -64,13 +66,17 @@ async def test_get_analysis_not_found(client, test_user, authed_client_factory):
 
 
 async def test_list_analysis_history(client, test_user, authed_client_factory, monkeypatch):
-    monkeypatch.setattr("app.api.routes.analysis.run_repository_analysis.delay", lambda analysis_id: None)
+    monkeypatch.setattr(
+        "app.api.routes.analysis.run_repository_analysis.delay", lambda analysis_id: None
+    )
 
     headers = authed_client_factory(test_user.id)
     repo_id = await _add_repo(client, headers, monkeypatch)
     await client.post(f"{PREFIX}/analysis", json={"repository_id": repo_id}, headers=headers)
 
-    response = await client.get(f"{PREFIX}/analysis", params={"repository_id": repo_id}, headers=headers)
+    response = await client.get(
+        f"{PREFIX}/analysis", params={"repository_id": repo_id}, headers=headers
+    )
 
     assert response.status_code == 200
     assert len(response.json()) == 1
@@ -79,11 +85,15 @@ async def test_list_analysis_history(client, test_user, authed_client_factory, m
 async def test_request_fix_requires_completed_analysis(
     client, test_user, authed_client_factory, monkeypatch
 ):
-    monkeypatch.setattr("app.api.routes.analysis.run_repository_analysis.delay", lambda analysis_id: None)
+    monkeypatch.setattr(
+        "app.api.routes.analysis.run_repository_analysis.delay", lambda analysis_id: None
+    )
 
     headers = authed_client_factory(test_user.id)
     repo_id = await _add_repo(client, headers, monkeypatch)
-    create_response = await client.post(f"{PREFIX}/analysis", json={"repository_id": repo_id}, headers=headers)
+    create_response = await client.post(
+        f"{PREFIX}/analysis", json={"repository_id": repo_id}, headers=headers
+    )
     analysis_id = create_response.json()["id"]
 
     response = await client.post(
@@ -100,12 +110,18 @@ async def test_request_fix_for_finding_persists_result(
     async def fake_get_file_content(access_token, full_name, path):
         return "PASSWORD = '123456'"
 
-    monkeypatch.setattr("app.api.routes.analysis.run_repository_analysis.delay", lambda analysis_id: None)
-    monkeypatch.setattr("app.api.routes.analysis.github_service.get_file_content", fake_get_file_content)
+    monkeypatch.setattr(
+        "app.api.routes.analysis.run_repository_analysis.delay", lambda analysis_id: None
+    )
+    monkeypatch.setattr(
+        "app.api.routes.analysis.github_service.get_file_content", fake_get_file_content
+    )
 
     headers = authed_client_factory(test_user.id)
     repo_id = await _add_repo(client, headers, monkeypatch)
-    create_response = await client.post(f"{PREFIX}/analysis", json={"repository_id": repo_id}, headers=headers)
+    create_response = await client.post(
+        f"{PREFIX}/analysis", json={"repository_id": repo_id}, headers=headers
+    )
     analysis_id = create_response.json()["id"]
     await _mark_analysis_done(db_session, analysis_id)
 
@@ -121,7 +137,11 @@ async def test_request_fix_for_finding_persists_result(
 
     response = await client.post(
         f"{PREFIX}/analysis/{analysis_id}/fix",
-        json={"title": "Senha em texto plano", "description": "Credencial hardcoded", "file_path": "config.py"},
+        json={
+            "title": "Senha em texto plano",
+            "description": "Credencial hardcoded",
+            "file_path": "config.py",
+        },
         headers=headers,
     )
 

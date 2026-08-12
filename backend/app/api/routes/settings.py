@@ -30,7 +30,9 @@ async def set_github_token(
     try:
         await github_service.get_authenticated_user(payload.token)
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Token do GitHub inválido ou sem permissão") from exc
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Token do GitHub inválido ou sem permissão"
+        ) from exc
 
     await GithubCredentialRepository(db).upsert(
         user_id=current_user.id, token_encrypted=encrypt_secret(payload.token)

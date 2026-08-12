@@ -80,7 +80,9 @@ async def generate_and_persist_suggestions(
     ai_provider: AIProvider,
 ) -> list[Suggestion]:
     user_prompt = suggestions_prompt.build_user_prompt(full_name, findings_by_dimension)
-    result = await ai_provider.generate_json(suggestions_prompt.SYSTEM_PROMPT, user_prompt, max_tokens=6000)
+    result = await ai_provider.generate_json(
+        suggestions_prompt.SYSTEM_PROMPT, user_prompt, max_tokens=6000
+    )
     items = result.get("suggestions", []) if isinstance(result, dict) else []
 
     rows = []
@@ -99,10 +101,16 @@ async def generate_and_persist_suggestions(
 
 
 async def generate_and_persist_readme(
-    db: AsyncSession, analysis: Analysis, full_name: str, files: dict[str, str], ai_provider: AIProvider
+    db: AsyncSession,
+    analysis: Analysis,
+    full_name: str,
+    files: dict[str, str],
+    ai_provider: AIProvider,
 ) -> GeneratedReadme:
     user_prompt = readme_gen.build_user_prompt(full_name, files)
-    content = await ai_provider.generate_text(readme_gen.SYSTEM_PROMPT, user_prompt, max_tokens=6000)
+    content = await ai_provider.generate_text(
+        readme_gen.SYSTEM_PROMPT, user_prompt, max_tokens=6000
+    )
 
     readme = GeneratedReadme(analysis_id=analysis.id, content=content.strip())
     db.add(readme)

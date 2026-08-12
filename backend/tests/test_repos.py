@@ -39,7 +39,9 @@ async def test_add_repository_by_owner_repo(client, test_user, authed_client_fac
     )
 
     headers = authed_client_factory(test_user.id)
-    response = await client.post(f"{PREFIX}/repos", json={"repo": "octocat/hello-world"}, headers=headers)
+    response = await client.post(
+        f"{PREFIX}/repos", json={"repo": "octocat/hello-world"}, headers=headers
+    )
 
     assert response.status_code == 201
     created = response.json()
@@ -54,7 +56,9 @@ async def test_add_repository_by_owner_repo(client, test_user, authed_client_fac
     assert get_response.json()["id"] == created["id"]
 
 
-async def test_add_repository_accepts_github_url(client, test_user, authed_client_factory, monkeypatch):
+async def test_add_repository_accepts_github_url(
+    client, test_user, authed_client_factory, monkeypatch
+):
     async def fake_get_repository(access_token, resolved_full_name):
         assert resolved_full_name == "octocat/hello-world"
         return {
@@ -87,13 +91,19 @@ async def test_add_repository_is_idempotent(client, test_user, authed_client_fac
     )
 
     headers = authed_client_factory(test_user.id)
-    first = await client.post(f"{PREFIX}/repos", json={"repo": "octocat/duplicate"}, headers=headers)
-    second = await client.post(f"{PREFIX}/repos", json={"repo": "octocat/duplicate"}, headers=headers)
+    first = await client.post(
+        f"{PREFIX}/repos", json={"repo": "octocat/duplicate"}, headers=headers
+    )
+    second = await client.post(
+        f"{PREFIX}/repos", json={"repo": "octocat/duplicate"}, headers=headers
+    )
 
     assert first.json()["id"] == second.json()["id"]
 
 
-async def test_add_repository_not_found_returns_404(client, test_user, authed_client_factory, monkeypatch):
+async def test_add_repository_not_found_returns_404(
+    client, test_user, authed_client_factory, monkeypatch
+):
     async def fake_get_repository(access_token, resolved_full_name):
         request = httpx.Request("GET", "https://api.github.com/repos/octocat/missing")
         response = httpx.Response(404, request=request)
@@ -102,7 +112,9 @@ async def test_add_repository_not_found_returns_404(client, test_user, authed_cl
     monkeypatch.setattr("app.api.routes.repos.github_service.get_repository", fake_get_repository)
 
     headers = authed_client_factory(test_user.id)
-    response = await client.post(f"{PREFIX}/repos", json={"repo": "octocat/missing"}, headers=headers)
+    response = await client.post(
+        f"{PREFIX}/repos", json={"repo": "octocat/missing"}, headers=headers
+    )
     assert response.status_code == 404
 
 

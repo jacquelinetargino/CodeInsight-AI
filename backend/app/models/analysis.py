@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,7 +17,11 @@ class Analysis(Base):
         UUID(as_uuid=True), ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False
     )
     status: Mapped[AnalysisStatus] = mapped_column(
-        Enum(AnalysisStatus, name="analysis_status", values_callable=lambda obj: [e.value for e in obj]),
+        Enum(
+            AnalysisStatus,
+            name="analysis_status",
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         default=AnalysisStatus.QUEUED,
         nullable=False,
     )
@@ -49,7 +53,9 @@ class AnalysisResult(Base):
         UUID(as_uuid=True), ForeignKey("analyses.id", ondelete="CASCADE"), nullable=False
     )
     dimension: Mapped[Dimension] = mapped_column(
-        Enum(Dimension, name="analysis_dimension", values_callable=lambda obj: [e.value for e in obj]),
+        Enum(
+            Dimension, name="analysis_dimension", values_callable=lambda obj: [e.value for e in obj]
+        ),
         nullable=False,
     )
     score: Mapped[int] = mapped_column(Integer, nullable=False)

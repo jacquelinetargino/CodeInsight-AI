@@ -1,5 +1,9 @@
 from app.models.enums import Dimension
-from app.services.analysis_service import DIMENSION_MODULES, DIMENSION_WEIGHTS, compute_overall_score
+from app.services.analysis_service import (
+    DIMENSION_MODULES,
+    DIMENSION_WEIGHTS,
+    compute_overall_score,
+)
 
 
 def test_all_six_dimensions_have_a_prompt_module_and_weight():

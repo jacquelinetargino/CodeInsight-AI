@@ -100,7 +100,9 @@ async def generate_readme(
     db: AsyncSession = Depends(get_db),
     ai_provider: AIProvider = Depends(get_ai_provider),
 ) -> dict:
-    analysis, access_token = await _get_done_analysis_with_access_token(db, analysis_id, current_user)
+    analysis, access_token = await _get_done_analysis_with_access_token(
+        db, analysis_id, current_user
+    )
     repository = analysis.repository
 
     files = await github_service.collect_repository_context(
@@ -124,11 +126,15 @@ async def get_readme(
     if analysis is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Análise não encontrada")
     if analysis.readme is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "README ainda não foi gerado para esta análise")
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "README ainda não foi gerado para esta análise"
+        )
     return {"content": analysis.readme.content}
 
 
-@router.post("/{analysis_id}/fix", response_model=FixSuggestionRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{analysis_id}/fix", response_model=FixSuggestionRead, status_code=status.HTTP_201_CREATED
+)
 @limiter.limit("20/minute")
 async def request_finding_fix(
     request: Request,
@@ -140,7 +146,9 @@ async def request_finding_fix(
 ) -> FixSuggestion:
     """Gera uma correção sob demanda para UM achado específico. Nunca escreve
     de volta no repositório — o resultado é só exibido para o usuário decidir."""
-    analysis, access_token = await _get_done_analysis_with_access_token(db, analysis_id, current_user)
+    analysis, access_token = await _get_done_analysis_with_access_token(
+        db, analysis_id, current_user
+    )
 
     file_content = None
     if payload.file_path:

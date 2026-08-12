@@ -21,12 +21,16 @@ class AIProvider(ABC):
     name: str
 
     @abstractmethod
-    async def generate_text(self, system_prompt: str, user_prompt: str, max_tokens: int = 4096) -> str:
+    async def generate_text(
+        self, system_prompt: str, user_prompt: str, max_tokens: int = 4096
+    ) -> str:
         """Chama o modelo e retorna a resposta em texto livre (ex.: um README em markdown).
         Cada provider implementa isso usando seu próprio SDK/cliente HTTP."""
         raise NotImplementedError
 
-    async def generate_json(self, system_prompt: str, user_prompt: str, max_tokens: int = 4096) -> dict | list:
+    async def generate_json(
+        self, system_prompt: str, user_prompt: str, max_tokens: int = 4096
+    ) -> dict | list:
         """Chama o modelo esperando uma resposta em JSON e já retorna parseada.
 
         Implementado uma única vez aqui (em cima de `generate_text`) para que
@@ -42,4 +46,6 @@ class AIProvider(ABC):
         try:
             return json.loads(raw)
         except json.JSONDecodeError as exc:
-            raise AIProviderError(f"Resposta do provedor de IA não é um JSON válido: {exc}") from exc
+            raise AIProviderError(
+                f"Resposta do provedor de IA não é um JSON válido: {exc}"
+            ) from exc
