@@ -26,26 +26,23 @@ from app.models.user import User
 TEST_DATABASE_URL = os.environ["DATABASE_URL"]
 
 
-@pytest_asyncio.fixture(scope="session")
-async def engine():
-    eng = create_async_engine(TEST_DATABASE_URL)
-    async with eng.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield eng
-    async with eng.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await eng.dispose()
-
-
 @pytest_asyncio.fixture
-async def db_session(engine) -> AsyncGenerator[AsyncSession, None]:
+async def db_session() -> AsyncGenerator[AsyncSession, None]:
+    """Engine novo por teste (não session-scoped): conexões do asyncpg ficam
+    presas ao event loop em que foram criadas, e o pytest-asyncio cria um loop
+    novo por função de teste por padrão — reaproveitar um engine entre testes
+    causa erros do tipo "attached to a different loop"."""
+    engine = create_async_engine(TEST_DATABASE_URL)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
     session_maker = async_sessionmaker(engine, expire_on_commit=False)
     async with session_maker() as session:
         yield session
-        await session.rollback()
-        for table in reversed(Base.metadata.sorted_tables):
-            await session.execute(table.delete())
-        await session.commit()
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
 
 
 @pytest_asyncio.fixture

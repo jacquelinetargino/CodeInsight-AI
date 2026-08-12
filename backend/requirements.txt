@@ -20,6 +20,9 @@ google-generativeai==0.8.3
 
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+# Pinado: bcrypt>=4.1 removeu o módulo __about__ e passou a rejeitar segredos
+# >72 bytes em vez de truncar, o que quebra a autodetecção de versão do passlib 1.7.4.
+bcrypt==4.0.1
 cryptography==44.0.0
 itsdangerous==2.2.0
 
