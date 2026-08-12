@@ -1,0 +1,26 @@
+# Overrides de produção: builda as imagens finais (multi-stage "prod") em vez do
+# estágio "dev", remove bind mounts e o modo --reload.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+services:
+  backend:
+    build:
+      context: ./backend
+      target: prod
+    volumes: []
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+
+  worker:
+    build:
+      context: ./backend
+      target: prod
+    volumes: []
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2
+
+  frontend:
+    build:
+      context: ./frontend
+      target: prod
+    volumes: []
+    ports:
+      - "80:80"

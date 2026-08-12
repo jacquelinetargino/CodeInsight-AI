@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Relatório CodeInsight AI — {{ repository_full_name }}</title>
+<style>
+  @page { size: A4; margin: 2.2cm; }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; color: #1a1a2e; font-size: 11pt; }
+  h1 { font-size: 22pt; margin-bottom: 0; color: #4f46e5; }
+  .subtitle { color: #6b7280; margin-top: 4px; margin-bottom: 24px; }
+  .score-box { text-align: center; border: 2px solid #4f46e5; border-radius: 12px; padding: 16px; margin-bottom: 24px; }
+  .score-value { font-size: 40pt; font-weight: bold; color: #4f46e5; }
+  .dimension { margin-bottom: 20px; page-break-inside: avoid; }
+  .dimension h2 { font-size: 14pt; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 8pt; font-weight: bold; color: white; }
+  .low { background: #10b981; } .medium { background: #f59e0b; }
+  .high { background: #ef4444; } .critical { background: #7f1d1d; }
+  .finding { margin: 8px 0; padding: 8px 12px; background: #f9fafb; border-left: 3px solid #4f46e5; }
+  .finding-title { font-weight: bold; }
+  .suggestion { margin: 10px 0; padding: 10px; background: #f9fafb; border-radius: 8px; }
+  footer { margin-top: 32px; font-size: 8pt; color: #9ca3af; text-align: center; }
+</style>
+</head>
+<body>
+  <h1>CodeInsight AI</h1>
+  <p class="subtitle">Relatório de análise — {{ repository_full_name }} · {{ generated_at }}</p>
+
+  <div class="score-box">
+    <div>Score Geral</div>
+    <div class="score-value">{{ overall_score }}/100</div>
+  </div>
+
+  {% for result in results %}
+  <div class="dimension">
+    <h2>{{ result.dimension_label }} — {{ result.score }}/100</h2>
+    <p>{{ result.summary }}</p>
+    {% for finding in result.findings %}
+    <div class="finding">
+      <div class="finding-title">{{ finding.title }} <span class="badge {{ finding.severity }}">{{ finding.severity }}</span></div>
+      <div>{{ finding.description }}</div>
+      {% if finding.file_path %}<div><em>Arquivo: {{ finding.file_path }}</em></div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+
+  <div class="dimension">
+    <h2>Sugestões de melhoria</h2>
+    {% for s in suggestions %}
+    <div class="suggestion">
+      <div class="finding-title">{{ s.title }} <span class="badge {{ s.severity }}">{{ s.severity }}</span></div>
+      <div>{{ s.description }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <footer>Gerado automaticamente pelo CodeInsight AI usando Claude (Anthropic).</footer>
+</body>
+</html>

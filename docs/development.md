@@ -1,0 +1,100 @@
+# Guia de desenvolvimento
+
+## Com Docker (recomendado)
+
+```bash
+cp .env.example .env
+# preencha AI_API_KEY (e opcionalmente GITHUB_TOKEN) no .env
+docker compose up --build
+```
+
+- Frontend: http://localhost:5173 (hot-reload)
+- Backend: http://localhost:8000/docs (hot-reload via `--reload` do uvicorn)
+- Worker Celery e Postgres/Redis também sobem junto
+
+Rebuildar só um serviço depois de mudar dependências:
+
+```bash
+docker compose up --build backend
+```
+
+Ver logs de um serviço específico:
+
+```bash
+docker compose logs -f worker
+```
+
+## Sem Docker
+
+Requer Python 3.12, Node 20, PostgreSQL 16 e Redis 7 instalados localmente.
+
+### Backend
+
+```bash
+cd backend
+python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt
+
+cp ../.env.example ../.env
+# ajuste DATABASE_URL/REDIS_URL para localhost se não estiver usando os containers
+
+alembic upgrade head
+uvicorn app.main:app --reload
+```
+
+Em outro terminal, o worker:
+
+```bash
+celery -A app.core.celery_app worker --loglevel=info
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+## Testando
+
+```bash
+# backend — precisa de um Postgres em DATABASE_URL (ver tests/conftest.py)
+cd backend && pytest --cov=app -v
+
+# frontend
+cd frontend && npm run test
+```
+
+Os testes de backend não fazem nenhuma chamada real a provedores de IA ou à GitHub
+API — tudo é mockado (`ScriptedAIProvider`, `monkeypatch` no `github_service`).
+
+## Lint
+
+```bash
+cd backend && ruff check . && black --check . && mypy app
+cd frontend && npm run lint
+```
+
+## Migrations
+
+Depois de alterar um modelo em `backend/app/models/`:
+
+```bash
+cd backend
+alembic revision --autogenerate -m "descrição da mudança"
+alembic upgrade head
+```
+
+Revise sempre a migration gerada antes de commitar — o autogenerate nem sempre
+detecta tudo corretamente (ex.: renomeação de coluna vira drop+add por padrão).
+
+## Adicionando um novo endpoint
+
+1. Modelo (se necessário) em `app/models/` + migration.
+2. Schema Pydantic em `app/schemas/`.
+3. Método de acesso a dados em `app/repositories/` (se envolver consultas novas).
+4. Lógica de negócio em `app/services/` (se houver alguma).
+5. Rota em `app/api/routes/`, registrada em `app/main.py`.
+6. Teste de integração em `backend/tests/`.
+7. No frontend: tipo em `src/types/`, chamada em `src/lib/api.ts`, hook em `src/hooks/`.
