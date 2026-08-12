@@ -1,0 +1,92 @@
+# Blueprint do Render para o CodeInsight AI.
+#
+# Como aplicar:
+#   1. Push deste arquivo para o repositório (branch que o Render vai seguir).
+#   2. No dashboard do Render: New > Blueprint > selecione o repo.
+#   3. Preencha as env vars marcadas com "sync: false" quando solicitado.
+#
+# Planos: web e Postgres em "free" (Postgres free expira em 30 dias — ok para
+# testar, migre para "starter" antes de ir a produção). Worker e Key Value
+# (Redis) não têm tier gratuito no Render, então ficam em "starter".
+
+databases:
+  - name: codeinsight-db
+    plan: free
+    databaseName: codeinsight
+    user: codeinsight
+
+services:
+  - type: keyvalue
+    name: codeinsight-redis
+    plan: starter
+    ipAllowList: [] # somente acesso interno (outros serviços deste projeto)
+    maxmemoryPolicy: noeviction # broker do Celery não pode perder mensagens
+
+  - type: web
+    name: codeinsight-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    preDeployCommand: alembic upgrade head
+    envVars: &backendEnv
+      - key: APP_ENV
+        value: production
+      - key: APP_NAME
+        value: CodeInsight AI
+      - key: API_V1_PREFIX
+        value: /api/v1
+      - key: FRONTEND_URL
+        sync: false # URL do frontend em produção (ex.: https://app.seudominio.com)
+      - key: BACKEND_URL
+        value: https://codeinsight-backend.onrender.com
+      - key: DATABASE_URL
+        fromDatabase:
+          name: codeinsight-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: codeinsight-redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: keyvalue
+          name: codeinsight-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        # Mesma instância/DB 0 do broker: o Render só expõe uma connection
+        # string por instância Key Value (não dá para separar em /0 e /1
+        # como no docker-compose local). Sem risco de colisão de chaves.
+        fromService:
+          type: keyvalue
+          name: codeinsight-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRE_MINUTES
+        value: "1440"
+      - key: ENCRYPTION_KEY
+        sync: false # gerar com: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      - key: GITHUB_TOKEN
+        sync: false # opcional — PAT do servidor para elevar rate limit da GitHub API
+      - key: AI_PROVIDER
+        value: claude
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_MODEL
+        value: claude-sonnet-5
+      - key: AI_BASE_URL
+        sync: false # opcional — só necessário para AI_PROVIDER=local ou endpoint custom
+
+  - type: worker
+    name: codeinsight-worker
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: celery -A app.core.celery_app worker --loglevel=info --concurrency=2
+    envVars: *backendEnv
