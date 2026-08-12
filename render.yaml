@@ -29,7 +29,9 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /health
-    preDeployCommand: alembic upgrade head
+    # preDeployCommand não é suportado no plano free — roda a migration no
+    # boot do próprio container em vez de numa etapa separada.
+    dockerCommand: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
     envVars: &backendEnv
       - key: APP_ENV
         value: production
