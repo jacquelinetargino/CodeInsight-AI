@@ -5,7 +5,6 @@ from datetime import datetime
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
 
 from app.models.analysis import Analysis
 from app.models.enums import Dimension
@@ -24,6 +23,11 @@ DIMENSION_LABELS = {
 
 
 def render_analysis_pdf(analysis: Analysis, repository_full_name: str) -> bytes:
+    # Import adiado: WeasyPrint carrega bibliotecas nativas (Pango/GTK) no
+    # import, o que é pesado e frágil dependendo do SO — atrasar até o
+    # primeiro uso evita que todo o app fique de pé por causa só do PDF.
+    from weasyprint import HTML
+
     template = _env.get_template("report.html")
 
     results = [

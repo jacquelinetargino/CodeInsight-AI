@@ -23,6 +23,30 @@ export class ApiError extends Error {
   }
 }
 
+interface PydanticValidationError {
+  msg?: string;
+  loc?: (string | number)[];
+}
+
+function extractErrorMessage(body: unknown, status: number): string {
+  const detail = (body as { detail?: unknown } | null)?.detail;
+
+  if (typeof detail === "string") return detail;
+
+  if (Array.isArray(detail)) {
+    // Erro de validação do FastAPI/Pydantic: lista de {msg, loc, ...}.
+    const messages = detail
+      .map((item: PydanticValidationError) => {
+        const field = item.loc?.[item.loc.length - 1];
+        return field ? `${field}: ${item.msg}` : item.msg;
+      })
+      .filter(Boolean);
+    if (messages.length > 0) return messages.join("; ");
+  }
+
+  return `Erro ${status}`;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = tokenStorage.get();
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -36,7 +60,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new ApiError(response.status, body.detail ?? `Erro ${response.status}`);
+    throw new ApiError(response.status, extractErrorMessage(body, response.status));
   }
 
   if (response.status === 204) return undefined as T;
