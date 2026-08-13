@@ -1,10 +1,8 @@
 FROM python:3.12-slim AS base
 
-# Dependências de sistema para psycopg/asyncpg e WeasyPrint (geração de PDF)
+# Dependências de sistema para compilar extensões nativas (asyncpg, cryptography, bcrypt)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libpangocairo-1.0-0 \
-    libcairo2 libgdk-pixbuf-2.0-0 shared-mime-info fonts-liberation \
     curl \
     && rm -rf /var/lib/apt/lists/*
 

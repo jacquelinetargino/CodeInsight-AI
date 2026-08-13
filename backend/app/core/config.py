@@ -25,9 +25,6 @@ class Settings(BaseSettings):
         if v.startswith("postgresql://"):
             return "postgresql+asyncpg://" + v[len("postgresql://") :]
         return v
-    redis_url: str = "redis://redis:6379/0"
-    celery_broker_url: str = "redis://redis:6379/0"
-    celery_result_backend: str = "redis://redis:6379/1"
 
     jwt_secret: str
     jwt_algorithm: str = "HS256"

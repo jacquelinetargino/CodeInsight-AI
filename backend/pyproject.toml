@@ -1,3 +1,55 @@
+[project]
+name = "codeinsight-backend"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+# Espelha requirements.txt (usado pelo Dockerfile/pip local) — o build da
+# FastAPI Cloud usa uv e lê as dependências daqui, não do requirements.txt.
+# Mantenha os dois em sincronia ao adicionar/atualizar uma dependência.
+dependencies = [
+    # [standard] traz o fastapi-cli: o runtime da FastAPI Cloud sobe a app com
+    # o comando `fastapi`, que não existe na instalação enxuta.
+    "fastapi[standard]==0.115.6",
+    "uvicorn[standard]==0.32.1",
+    "pydantic==2.10.3",
+    "pydantic-settings==2.6.1",
+    "email-validator==2.2.0",
+    "sqlalchemy==2.0.36",
+    "asyncpg==0.30.0",
+    "alembic==1.14.0",
+    "httpx==0.28.1",
+    "anthropic==0.40.0",
+    "openai==1.58.1",
+    "google-generativeai==0.8.3",
+    "python-jose[cryptography]==3.3.0",
+    "passlib[bcrypt]==1.7.4",
+    "bcrypt==4.0.1",
+    "cryptography==44.0.0",
+    "itsdangerous==2.2.0",
+    "xhtml2pdf==0.2.16",
+    "jinja2==3.1.4",
+    "slowapi==0.1.9",
+    "python-multipart==0.0.19",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+# O build da FastAPI Cloud instala o projeto como pacote. Sem restringir a
+# busca, o setuptools acha dois diretórios de topo (app e alembic) e aborta com
+# "Multiple top-level packages discovered in a flat-layout". O glob "app*"
+# inclui os subpacotes (app.api, app.core, ...) e deixa alembic/tests de fora.
+include = ["app*"]
+
+[tool.setuptools.package-data]
+# Templates Jinja do relatório em PDF não são .py — precisam ser declarados
+# para não ficarem de fora numa instalação não-editável.
+app = ["templates/*.html"]
+
+[tool.fastapi]
+entrypoint = "app.main:app"
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"

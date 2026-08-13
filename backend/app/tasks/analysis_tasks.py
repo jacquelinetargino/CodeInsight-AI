@@ -1,10 +1,8 @@
-import asyncio
 import logging
 import uuid
 from datetime import UTC, datetime
 
 from app.ai.factory import get_ai_provider
-from app.core.celery_app import celery_app
 from app.core.database import AsyncSessionLocal
 from app.core.security import decrypt_secret
 from app.models.analysis import Analysis
@@ -16,12 +14,7 @@ from app.services.analysis_service import DIMENSION_MODULES
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(name="run_repository_analysis", bind=True, max_retries=1)
-def run_repository_analysis(self, analysis_id: str) -> None:
-    asyncio.run(_run_repository_analysis(uuid.UUID(analysis_id)))
-
-
-async def _run_repository_analysis(analysis_id: uuid.UUID) -> None:
+async def run_repository_analysis(analysis_id: uuid.UUID) -> None:
     async with AsyncSessionLocal() as db:
         analysis = await db.get(Analysis, analysis_id)
         if analysis is None:

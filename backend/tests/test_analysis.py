@@ -8,6 +8,10 @@ settings = get_settings()
 PREFIX = settings.api_v1_prefix
 
 
+async def _noop_run_repository_analysis(analysis_id) -> None:
+    pass
+
+
 async def _add_repo(client, headers, monkeypatch, full_name: str = "octocat/analyzable") -> str:
     async def fake_get_repository(access_token, resolved_full_name):
         return {
@@ -40,9 +44,12 @@ async def test_create_analysis_requires_owned_repository(client, test_user, auth
 
 async def test_create_analysis_enqueues_task(client, test_user, authed_client_factory, monkeypatch):
     calls = []
+
+    async def fake_run_repository_analysis(analysis_id):
+        calls.append(str(analysis_id))
+
     monkeypatch.setattr(
-        "app.api.routes.analysis.run_repository_analysis.delay",
-        lambda analysis_id: calls.append(analysis_id),
+        "app.api.routes.analysis.run_repository_analysis", fake_run_repository_analysis
     )
 
     headers = authed_client_factory(test_user.id)
@@ -67,7 +74,7 @@ async def test_get_analysis_not_found(client, test_user, authed_client_factory):
 
 async def test_list_analysis_history(client, test_user, authed_client_factory, monkeypatch):
     monkeypatch.setattr(
-        "app.api.routes.analysis.run_repository_analysis.delay", lambda analysis_id: None
+        "app.api.routes.analysis.run_repository_analysis", _noop_run_repository_analysis
     )
 
     headers = authed_client_factory(test_user.id)
@@ -86,7 +93,7 @@ async def test_request_fix_requires_completed_analysis(
     client, test_user, authed_client_factory, monkeypatch
 ):
     monkeypatch.setattr(
-        "app.api.routes.analysis.run_repository_analysis.delay", lambda analysis_id: None
+        "app.api.routes.analysis.run_repository_analysis", _noop_run_repository_analysis
     )
 
     headers = authed_client_factory(test_user.id)
@@ -111,7 +118,7 @@ async def test_request_fix_for_finding_persists_result(
         return "PASSWORD = '123456'"
 
     monkeypatch.setattr(
-        "app.api.routes.analysis.run_repository_analysis.delay", lambda analysis_id: None
+        "app.api.routes.analysis.run_repository_analysis", _noop_run_repository_analysis
     )
     monkeypatch.setattr(
         "app.api.routes.analysis.github_service.get_file_content", fake_get_file_content

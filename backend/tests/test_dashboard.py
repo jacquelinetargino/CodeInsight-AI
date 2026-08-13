@@ -8,6 +8,10 @@ settings = get_settings()
 PREFIX = settings.api_v1_prefix
 
 
+async def _noop_run_repository_analysis(analysis_id) -> None:
+    pass
+
+
 async def test_dashboard_requires_auth(client):
     response = await client.get(f"{PREFIX}/dashboard/summary")
     assert response.status_code == 401
@@ -43,7 +47,7 @@ async def test_dashboard_summary_reflects_completed_analyses(
 
     monkeypatch.setattr("app.api.routes.repos.github_service.get_repository", fake_get_repository)
     monkeypatch.setattr(
-        "app.api.routes.analysis.run_repository_analysis.delay", lambda analysis_id: None
+        "app.api.routes.analysis.run_repository_analysis", _noop_run_repository_analysis
     )
 
     headers = authed_client_factory(test_user.id)

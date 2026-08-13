@@ -1,10 +1,12 @@
-"""Renderiza o relatório de uma análise em PDF (HTML -> PDF via WeasyPrint),
+"""Renderiza o relatório de uma análise em PDF (HTML -> PDF via xhtml2pdf),
 reaproveitando os mesmos dados exibidos no dashboard."""
 
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
+from xhtml2pdf import pisa
 
 from app.models.analysis import Analysis
 from app.models.enums import Dimension
@@ -23,11 +25,6 @@ DIMENSION_LABELS = {
 
 
 def render_analysis_pdf(analysis: Analysis, repository_full_name: str) -> bytes:
-    # Import adiado: WeasyPrint carrega bibliotecas nativas (Pango/GTK) no
-    # import, o que é pesado e frágil dependendo do SO — atrasar até o
-    # primeiro uso evita que todo o app fique de pé por causa só do PDF.
-    from weasyprint import HTML
-
     template = _env.get_template("report.html")
 
     results = [
@@ -51,4 +48,8 @@ def render_analysis_pdf(analysis: Analysis, repository_full_name: str) -> bytes:
         ],
     )
 
-    return HTML(string=html_content).write_pdf()
+    buffer = BytesIO()
+    result = pisa.CreatePDF(html_content, dest=buffer)
+    if result.err:
+        raise RuntimeError(f"Falha ao gerar PDF do relatório (analysis {analysis.id})")
+    return buffer.getvalue()

@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.base import AIProvider
@@ -33,6 +33,7 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
 async def create_analysis(
     request: Request,
     payload: AnalysisCreateRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Analysis:
@@ -44,7 +45,7 @@ async def create_analysis(
     await db.commit()
     await db.refresh(analysis)
 
-    run_repository_analysis.delay(str(analysis.id))
+    background_tasks.add_task(run_repository_analysis, analysis.id)
     return analysis
 
 

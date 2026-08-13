@@ -25,6 +25,18 @@ from app.models.user import User
 
 TEST_DATABASE_URL = os.environ["DATABASE_URL"]
 
+# Trava de segurança: as fixtures abaixo rodam drop_all() a cada teste. Apontar
+# DATABASE_URL para um banco remoto (Supabase, Render...) e rodar a suíte
+# apagaria o schema de produção — algo fácil de fazer sem querer, já que a mesma
+# variável é usada em dev, em deploy e nos testes.
+_ALLOWED_TEST_HOSTS = ("localhost", "127.0.0.1", "postgres", "::1")
+if not any(f"@{host}" in TEST_DATABASE_URL for host in _ALLOWED_TEST_HOSTS):
+    raise RuntimeError(
+        "DATABASE_URL aponta para um host que não é local. A suíte apaga todas as "
+        "tabelas entre os testes — recusando rodar para não destruir dados reais. "
+        f"Hosts permitidos: {', '.join(_ALLOWED_TEST_HOSTS)}."
+    )
+
 
 @pytest_asyncio.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
