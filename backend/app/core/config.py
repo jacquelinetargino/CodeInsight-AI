@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     # Necessário para "local" (ex.: http://localhost:11434/v1 no Ollama) e
     # opcional para apontar OpenAI/Gemini para um endpoint compatível custom.
     ai_base_url: str | None = None
+    # Teto do bloco de contexto enviado em cada prompt de análise. Existe porque
+    # provedores cobram/limitam por tokens/minuto: uma análise dispara ~7
+    # chamadas em sequência, então o contexto precisa caber no orçamento do
+    # plano. ~4 caracteres por token serve de regra de bolso.
+    ai_max_context_chars: int = 100_000
 
     @property
     def is_production(self) -> bool:
