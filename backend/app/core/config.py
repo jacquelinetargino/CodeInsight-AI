@@ -10,8 +10,14 @@ class Settings(BaseSettings):
     app_env: str = "development"
     app_name: str = "CodeInsight AI"
     api_v1_prefix: str = "/api/v1"
+    # Aceita várias origens separadas por vírgula: em produção o front tem mais
+    # de um domínio (aliases da Vercel) e ainda queremos permitir o dev local.
     frontend_url: str = "http://localhost:5173"
     backend_url: str = "http://localhost:8000"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.frontend_url.split(",") if origin.strip()]
 
     database_url: str
 

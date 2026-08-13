@@ -16,7 +16,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url],
+    allow_origins=settings.cors_origins,
     # Auth é via header "Authorization: Bearer" (não cookie), então não
     # precisamos de allow_credentials para o fluxo de login funcionar.
     allow_credentials=False,
