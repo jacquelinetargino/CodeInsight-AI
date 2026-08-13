@@ -7,9 +7,10 @@ os.environ.setdefault(
 )
 os.environ.setdefault("JWT_SECRET", "test-secret-key")
 os.environ.setdefault("ENCRYPTION_KEY", "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=")
-os.environ.setdefault("AI_PROVIDER", "claude")
-os.environ.setdefault("AI_API_KEY", "test-ai-api-key")
-os.environ.setdefault("AI_MODEL", "claude-sonnet-5")
+
+# Nenhuma variável de IA é definida aqui de propósito: o estado padrão da suíte
+# é "sem provedor configurado", que é o mesmo de uma instalação normal. Testes
+# que precisam de um provedor devem declarar isso explicitamente com monkeypatch.
 
 import pytest
 import pytest_asyncio

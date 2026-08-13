@@ -2,7 +2,7 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
-from app.ai.factory import get_ai_provider
+from app.ai.factory import get_optional_ai_provider
 from app.core.database import AsyncSessionLocal
 from app.core.security import decrypt_secret
 from app.models.analysis import Analysis
@@ -40,7 +40,17 @@ async def run_repository_analysis(analysis_id: uuid.UUID) -> None:
                 access_token, repository.full_name
             )
 
-            ai_provider = get_ai_provider()
+            # Transitório: enquanto o CodeInsight Engine não assume o pipeline
+            # (PR 16), a análise ainda depende de um provedor. Sem ele, falha
+            # com mensagem explicativa em vez de um traceback de SDK.
+            ai_provider = get_optional_ai_provider()
+            if ai_provider is None:
+                raise RuntimeError(
+                    "Nenhum motor de análise disponível: o CodeInsight Engine ainda não "
+                    "está integrado e nenhum provedor de IA foi configurado. Configure "
+                    "AI_API_KEY para usar a análise legada."
+                )
+
             scores: dict[Dimension, int] = {}
             findings_by_dimension: dict[str, list[dict]] = {}
 

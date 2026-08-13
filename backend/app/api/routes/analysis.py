@@ -4,7 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.base import AIProvider
-from app.ai.factory import get_ai_provider
+from app.ai.factory import AIProviderNotConfiguredError, get_ai_provider
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.limiter import limiter
@@ -26,6 +26,16 @@ from app.services import analysis_service, github_service
 from app.tasks.analysis_tasks import run_repository_analysis
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
+
+
+def require_ai_provider() -> AIProvider:
+    """Dependência dos recursos LEGACY que só existem com IA. Traduz a ausência
+    de provedor em 503 — a instalação está saudável, o recurso é que é opcional
+    e não foi habilitado."""
+    try:
+        return get_ai_provider()
+    except AIProviderNotConfiguredError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
 
 
 @router.post("", response_model=AnalysisRead, status_code=status.HTTP_202_ACCEPTED)
@@ -99,7 +109,7 @@ async def generate_readme(
     analysis_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    ai_provider: AIProvider = Depends(get_ai_provider),
+    ai_provider: AIProvider = Depends(require_ai_provider),
 ) -> dict:
     analysis, access_token = await _get_done_analysis_with_access_token(
         db, analysis_id, current_user
@@ -143,7 +153,7 @@ async def request_finding_fix(
     payload: FixRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    ai_provider: AIProvider = Depends(get_ai_provider),
+    ai_provider: AIProvider = Depends(require_ai_provider),
 ) -> FixSuggestion:
     """Gera uma correção sob demanda para UM achado específico. Nunca escreve
     de volta no repositório — o resultado é só exibido para o usuário decidir."""
