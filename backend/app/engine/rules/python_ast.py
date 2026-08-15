@@ -104,9 +104,7 @@ def _is_dynamic_string(node: ast.AST) -> bool:
     com dado externo."""
     if isinstance(node, ast.JoinedStr):  # f-string
         return any(isinstance(v, ast.FormattedValue) for v in node.values)
-    if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Mod)):
-        return True
-    return False
+    return isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add | ast.Mod)
 
 
 def _looks_like_sql(node: ast.AST) -> bool:
@@ -263,7 +261,7 @@ class _Visitor(ast.NodeVisitor):
 
         # Argumento default mutável é compartilhado entre chamadas.
         for default in list(node.args.defaults) + [d for d in node.args.kw_defaults if d]:
-            if isinstance(default, (ast.List, ast.Dict, ast.Set)):
+            if isinstance(default, ast.List | ast.Dict | ast.Set):
                 self._add(
                     "mutable-default-argument",
                     node,
@@ -295,7 +293,7 @@ def _cyclomatic_complexity(node: ast.AST) -> int:
     suficiente para sinalizar função difícil de testar."""
     complexidade = 1
     for filho in ast.walk(node):
-        if isinstance(filho, (ast.If, ast.For, ast.AsyncFor, ast.While, ast.ExceptHandler)):
+        if isinstance(filho, ast.If | ast.For | ast.AsyncFor | ast.While | ast.ExceptHandler):
             complexidade += 1
         elif isinstance(filho, ast.BoolOp):
             complexidade += len(filho.values) - 1
