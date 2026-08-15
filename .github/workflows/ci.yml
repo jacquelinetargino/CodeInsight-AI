@@ -31,9 +31,8 @@ jobs:
       DATABASE_URL: postgresql+asyncpg://codeinsight:codeinsight@localhost:5432/codeinsight_ci
       JWT_SECRET: ci-lint-secret
       ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
-      AI_PROVIDER: claude
-      AI_API_KEY: ci-placeholder-key
-      AI_MODEL: claude-sonnet-5
+      # Nenhuma variável de IA aqui, de propósito: o CI só passa se a aplicação
+      # funcionar sem provedor externo configurado.
 
     steps:
       - uses: actions/checkout@v4

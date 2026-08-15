@@ -4,7 +4,13 @@ import pytest
 from openai import RateLimitError
 
 from app.ai.base import AIProvider, AIProviderError
-from app.ai.factory import _PROVIDERS, UnknownAIProviderError, get_ai_provider
+from app.ai.factory import (
+    _PROVIDERS,
+    AIProviderNotConfiguredError,
+    UnknownAIProviderError,
+    get_ai_provider,
+    get_optional_ai_provider,
+)
 from app.ai.providers import openai_provider
 from app.ai.providers.claude_provider import ClaudeProvider
 from app.ai.providers.gemini_provider import GeminiProvider
@@ -65,11 +71,13 @@ def _clear_caches():
 
 def test_get_ai_provider_returns_configured_provider(monkeypatch):
     monkeypatch.setenv("AI_PROVIDER", "claude")
+    monkeypatch.setenv("AI_API_KEY", "chave-de-teste")
     assert isinstance(get_ai_provider(), ClaudeProvider)
 
 
 def test_get_ai_provider_is_case_insensitive(monkeypatch):
     monkeypatch.setenv("AI_PROVIDER", "OpenAI")
+    monkeypatch.setenv("AI_API_KEY", "chave-de-teste")
     assert isinstance(get_ai_provider(), OpenAIProvider)
 
 
@@ -79,11 +87,20 @@ def test_get_ai_provider_rejects_unknown_provider(monkeypatch):
         get_ai_provider()
 
 
-def test_local_provider_requires_base_url(monkeypatch):
+def test_local_without_base_url_counts_as_not_configured(monkeypatch):
+    """Para `local`, o endpoint é o que define se há provedor — não a chave.
+    Sem ele o estado é 'não configurado', não um erro de programação."""
     monkeypatch.setenv("AI_PROVIDER", "local")
     monkeypatch.delenv("AI_BASE_URL", raising=False)
-    with pytest.raises(ValueError, match="AI_BASE_URL"):
+    with pytest.raises(AIProviderNotConfiguredError):
         get_ai_provider()
+
+
+def test_local_provider_class_still_requires_base_url():
+    """O contrato do próprio provider segue valendo quando instanciado direto,
+    sem passar pela factory."""
+    with pytest.raises(ValueError, match="AI_BASE_URL"):
+        LocalAIProvider(api_key=None, model="m", base_url=None)
 
 
 def test_local_provider_works_with_base_url(monkeypatch):
@@ -145,3 +162,29 @@ async def test_generate_text_desiste_apos_o_limite_de_tentativas(monkeypatch):
 
 async def _noop() -> None:
     return None
+
+
+def test_optional_provider_is_none_when_unconfigured(monkeypatch):
+    """O caminho que o motor próprio usa: sem IA, devolve None em vez de falhar."""
+    monkeypatch.delenv("AI_API_KEY", raising=False)
+    assert get_optional_ai_provider() is None
+
+
+def test_optional_provider_returns_provider_when_configured(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "claude")
+    monkeypatch.setenv("AI_API_KEY", "chave-de-teste")
+    assert isinstance(get_optional_ai_provider(), ClaudeProvider)
+
+
+def test_optional_provider_is_none_for_unknown_provider(monkeypatch):
+    """Configuração inválida também não pode derrubar quem só quer saber se há IA."""
+    monkeypatch.setenv("AI_PROVIDER", "not-a-real-provider")
+    monkeypatch.setenv("AI_API_KEY", "chave-de-teste")
+    assert get_optional_ai_provider() is None
+
+
+def test_get_ai_provider_raises_when_unconfigured(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "claude")
+    monkeypatch.delenv("AI_API_KEY", raising=False)
+    with pytest.raises(AIProviderNotConfiguredError):
+        get_ai_provider()

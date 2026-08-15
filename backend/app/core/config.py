@@ -44,9 +44,13 @@ class Settings(BaseSettings):
     # de requisições não autenticadas na GitHub API).
     github_token: str | None = None
 
-    # --- Provedor de IA (abstrato) ---
+    # --- Provedor de IA (LEGACY/OPCIONAL) ---
+    # A análise principal é feita pelo CodeInsight Engine, em Python, sem IA
+    # externa. Estes campos servem apenas a recursos complementares (explicar
+    # achados, resumir relatório, sugerir correções, gerar documentação) e por
+    # isso não têm valor obrigatório: a aplicação sobe sem nenhum deles.
     ai_provider: str = "claude"  # claude | openai | gemini | local
-    ai_api_key: str
+    ai_api_key: str | None = None
     ai_model: str = "claude-sonnet-5"
     # Necessário para "local" (ex.: http://localhost:11434/v1 no Ollama) e
     # opcional para apontar OpenAI/Gemini para um endpoint compatível custom.
@@ -60,6 +64,15 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
+
+    @property
+    def ai_configured(self) -> bool:
+        """Se há um provedor de IA utilizável. Para `local` o que importa é o
+        endpoint, não a chave — servidores locais (Ollama, LM Studio) aceitam
+        qualquer valor de API key."""
+        if self.ai_provider.lower().strip() == "local":
+            return bool(self.ai_base_url)
+        return bool(self.ai_api_key)
 
 
 @lru_cache
