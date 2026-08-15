@@ -293,3 +293,37 @@ def test_analyzes_this_project_without_crashing(analyzer):
     for achado in resultado.findings:
         assert achado.file_path
         assert achado.rule_id.startswith("SEC-")
+
+
+# --- JavaScript/TypeScript --------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("arquivo", "codigo", "esperado"),
+    [
+        ("app.js", "const r = eval(x);\n", "SEC-006"),
+        ("app.js", "const f = new Function('x');\n", "SEC-007"),
+        ("view.tsx", "el.innerHTML = dados;\n", "SEC-013"),
+        ("view.tsx", "<div dangerouslySetInnerHTML={{__html: h}} />\n", "SEC-013"),
+        ("token.ts", "const t = Math.random().toString(36); // token\n", "SEC-014"),
+        ("auth.ts", 'localStorage.setItem("authToken", t);\n', "SEC-015"),
+        ("api.ts", 'fetch("http://api.exemplo.com");\n', "SEC-016"),
+        ("run.js", "child_process.exec(cmd);\n", "SEC-009"),
+    ],
+)
+def test_maps_javascript_issues_to_rules(analyzer, tmp_path, arquivo, codigo, esperado):
+    build_repo(tmp_path, {arquivo: codigo})
+    assert esperado in rule_ids(run(analyzer, tmp_path))
+
+
+def test_javascript_findings_have_lower_confidence_than_python(analyzer, tmp_path):
+    """Detecção textual não merece a mesma certeza que a AST."""
+    build_repo(tmp_path, {"a.py": "eval(x)\n", "b.js": "eval(x);\n"})
+    por_arquivo = {f.file_path: f for f in run(analyzer, tmp_path).findings}
+
+    assert por_arquivo["b.js"].confidence < por_arquivo["a.py"].confidence
+
+
+def test_javascript_quality_issues_are_not_security(analyzer, tmp_path):
+    build_repo(tmp_path, {"app.js": "var x = 1;\nconsole.log(x);\nif (a == b) {}\n"})
+    assert run(analyzer, tmp_path).findings == []
