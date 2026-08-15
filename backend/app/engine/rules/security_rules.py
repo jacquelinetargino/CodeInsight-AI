@@ -142,6 +142,44 @@ SECURITY_RULES: list[Rule] = [
         "Use yaml.safe_load() ou passe Loader=yaml.SafeLoader.",
         0.9,
     ),
+    _rule(
+        "SEC-013",
+        "Injeção de HTML (XSS)",
+        "high",
+        "HTML é montado dinamicamente e inserido no documento. Se algum trecho vier do "
+        "usuário, ele consegue executar script na página de quem abrir.",
+        "Insira texto com textContent, ou sanitize o HTML com uma biblioteca dedicada "
+        "antes de injetá-lo.",
+        0.7,
+    ),
+    _rule(
+        "SEC-014",
+        "Aleatoriedade insegura",
+        "medium",
+        "Math.random() é previsível e não serve para gerar token, senha, identificador de "
+        "sessão ou salt.",
+        "Use crypto.randomUUID() ou crypto.getRandomValues() no navegador, e crypto.randomBytes() "
+        "no Node.",
+        0.7,
+    ),
+    _rule(
+        "SEC-015",
+        "Credencial no armazenamento do navegador",
+        "high",
+        "Token guardado em localStorage ou sessionStorage fica acessível a qualquer script "
+        "da página — inclusive a um injetado por XSS.",
+        "Prefira cookie httpOnly com SameSite, que o JavaScript da página não consegue ler.",
+        0.7,
+    ),
+    _rule(
+        "SEC-016",
+        "Transporte sem criptografia",
+        "medium",
+        "Uma URL em http:// envia os dados em texto claro, sujeitos a leitura e alteração "
+        "no caminho.",
+        "Use https://. Endereços locais de desenvolvimento são exceção aceitável.",
+        0.6,
+    ),
 ]
 
 
