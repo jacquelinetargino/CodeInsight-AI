@@ -61,6 +61,37 @@ class Settings(BaseSettings):
     # plano. ~4 caracteres por token serve de regra de bolso.
     ai_max_context_chars: int = 100_000
 
+    # --- CodeInsight Engine: limites de recurso ---
+    # O repositório analisado é dado NÃO CONFIÁVEL: pode ser gigante, ter milhões
+    # de arquivos ou expandir mil vezes ao descomprimir. Cada limite abaixo cobre
+    # um desses vetores e é ajustável por variável de ambiente.
+
+    # Porta barata antes de gastar banda: o campo `size` da GitHub API, em KB.
+    # É advisório — reflete o repositório git, não o tarball.
+    engine_max_repo_size_kb: int = 150_000
+
+    # Teto real sobre os bytes baixados. Precisa ser contado durante o streaming
+    # porque o GitHub responde com transfer-encoding chunked, sem Content-Length.
+    engine_max_archive_bytes: int = 50 * 1024 * 1024
+
+    # Teto independente sobre o conteúdo descomprimido. Limitar só o download não
+    # protege: gzip chega a expandir ~1000:1, então 50 MB comprimidos poderiam
+    # virar dezenas de GB em disco.
+    #
+    # NOTA: este valor é conservador por precaução, não medido. O ambiente de
+    # execução (FastAPI Cloud) não documenta o tamanho do disco efêmero. Se for
+    # preciso analisar repositórios maiores, meça o espaço disponível antes de
+    # aumentar.
+    engine_max_uncompressed_bytes: int = 200 * 1024 * 1024
+
+    engine_max_files: int = 20_000
+
+    # Arquivo acima disso é pulado, não derruba a análise: bundles minificados
+    # são grandes e legitimamente inúteis para análise estática.
+    engine_max_file_bytes: int = 2 * 1024 * 1024
+
+    engine_max_analysis_seconds: int = 120
+
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
