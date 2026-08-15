@@ -18,7 +18,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.ai.base import AIProvider
-from app.ai.factory import get_ai_provider
+from app.api.routes.analysis import require_ai_provider
 from app.core.database import Base, get_db
 from app.core.security import create_access_token, hash_password
 from app.main import app
@@ -115,13 +115,17 @@ class ScriptedAIProvider(AIProvider):
 
 @pytest.fixture
 def override_ai_provider():
-    """Troca `get_ai_provider` por um `ScriptedAIProvider` com respostas fixas.
-    Uso: override_ai_provider(json_responses=[{...}, {...}])."""
+    """Troca o provedor de IA por um `ScriptedAIProvider` com respostas fixas.
+    Uso: override_ai_provider(json_responses=[{...}, {...}]).
+
+    O override tem de usar exatamente o callable declarado no `Depends()` das
+    rotas — `require_ai_provider` — porque é assim que o FastAPI indexa
+    `dependency_overrides`."""
 
     def _set(*, text_responses=None, json_responses=None) -> ScriptedAIProvider:
         provider = ScriptedAIProvider(text_responses=text_responses, json_responses=json_responses)
-        app.dependency_overrides[get_ai_provider] = lambda: provider
+        app.dependency_overrides[require_ai_provider] = lambda: provider
         return provider
 
     yield _set
-    app.dependency_overrides.pop(get_ai_provider, None)
+    app.dependency_overrides.pop(require_ai_provider, None)

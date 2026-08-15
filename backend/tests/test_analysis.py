@@ -95,8 +95,11 @@ async def test_list_analysis_history(client, test_user, authed_client_factory, m
 
 
 async def test_request_fix_requires_completed_analysis(
-    client, test_user, authed_client_factory, monkeypatch
+    client, test_user, authed_client_factory, monkeypatch, override_ai_provider
 ):
+    # Com provedor disponível, para o 400 vir da regra de negócio (análise não
+    # concluída) e não do 503 de recurso de IA indisponível.
+    override_ai_provider(json_responses=[{}])
     monkeypatch.setattr(
         "app.api.routes.analysis.run_repository_analysis", _noop_run_repository_analysis
     )
