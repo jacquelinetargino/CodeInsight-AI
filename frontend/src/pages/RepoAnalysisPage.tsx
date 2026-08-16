@@ -1,8 +1,9 @@
-import { Download, FileText, Github, Lightbulb, PlayCircle, Wrench } from "lucide-react";
+import { Download, FileText, Github, Info, Lightbulb, PlayCircle, Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { DimensionCard } from "@/components/analysis/DimensionCard";
 import { ReadmePreview } from "@/components/analysis/ReadmePreview";
+import { RiskBadge } from "@/components/analysis/RiskBadge";
 import { StatusBadge } from "@/components/analysis/StatusBadge";
 import { SuggestionCard } from "@/components/analysis/SuggestionCard";
 import { AppShell } from "@/components/layout/AppShell";
@@ -17,6 +18,7 @@ import { useAnalysisDetail, useAnalysisHistory, useCreateAnalysis, useGenerateRe
 import { useGithubSummary, useRepository } from "@/hooks/useRepos";
 import { api } from "@/lib/api";
 import { cn, formatDate, scoreColor } from "@/lib/utils";
+import { dimensionLabel } from "@/types";
 
 export function RepoAnalysisPage() {
   const { repoId } = useParams<{ repoId: string }>();
@@ -120,12 +122,19 @@ export function RepoAnalysisPage() {
                     {analysis.status === "done" && analysis.overall_score !== null && (
                       <ScoreGauge score={analysis.overall_score} />
                     )}
+                    {analysis.status === "done" && analysis.risk_level && (
+                      <RiskBadge level={analysis.risk_level} />
+                    )}
                     {analysis.status === "failed" && (
-                      <p className="max-w-xs text-center text-sm text-destructive">{analysis.error_message}</p>
+                      /* role=alert: a falha precisa ser anunciada por leitor de
+                         tela, não só ficar vermelha na tela. */
+                      <p role="alert" className="max-w-xs text-center text-sm text-destructive">
+                        {analysis.error_message}
+                      </p>
                     )}
                     {(analysis.status === "queued" || analysis.status === "running") && (
-                      <p className="max-w-xs text-center text-sm text-muted-foreground">
-                        Coletando o repositório e consultando a IA — isso pode levar alguns minutos.
+                      <p aria-live="polite" className="max-w-xs text-center text-sm text-muted-foreground">
+                        Baixando e analisando o repositório — costuma levar menos de um minuto.
                       </p>
                     )}
                   </div>
@@ -139,6 +148,22 @@ export function RepoAnalysisPage() {
                     <DimensionCard key={result.dimension} result={result} analysisId={analysis.id} />
                   ))}
                 </div>
+              )}
+
+              {/* Dimensão sem resultado não pode simplesmente sumir da tela:
+                  a ausência do card seria lida como "nada a relatar aqui",
+                  quando o que houve foi ausência de avaliação. */}
+              {(analysis.unevaluated_dimensions?.length ?? 0) > 0 && (
+                <Card>
+                  <CardContent className="flex items-start gap-3 p-4">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">Não avaliado nesta análise:</span>{" "}
+                      {analysis.unevaluated_dimensions!.map(dimensionLabel).join(", ")}. Estas dimensões
+                      não entraram no score — ausência de avaliação não é ausência de problema.
+                    </p>
+                  </CardContent>
+                </Card>
               )}
 
               {analysis.status === "done" && (
