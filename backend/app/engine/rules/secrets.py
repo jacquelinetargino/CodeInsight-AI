@@ -28,9 +28,27 @@ _PLACEHOLDER_RE = re.compile(
     # seguidos de outras palavras, então o resto do valor também é consumido.
     r"(?:your|my|our|insert|replace|enter|add|set|put)[-_ ][\w\- ]*|"
     r"todo|tbd|none|null|nil|undefined|"
-    r"secret|password|token|apikey|api[-_]key|value|string)$",
+    r"secret|password|token|apikey|api[-_]key|value|string|"
+    # Genéricos de documentação, em inglês e português. `user:pass@host` e
+    # `USUARIO:SENHA@host` são a forma canônica de escrever um exemplo de
+    # string de conexão — acusá-los treina o usuário a ignorar o relatório.
+    r"pass|passwd|senha|usuario|usuário|user|username|login|"
+    r"foo|bar|baz|abc123|123456|admin|root|hostname|host|dbname|database)$",
     re.IGNORECASE,
 )
+
+# Interpolação de variável: `${VAR}`, `$VAR`, `{{ var }}`, `%(var)s`, `<valor>`.
+# Isto não é uma credencial fixa — é a ausência de uma. O `docker-compose.yml`
+# deste projeto era acusado por conter `${POSTGRES_PASSWORD}`, que é exatamente
+# a prática recomendada.
+_INTERPOLATION_RE = re.compile(
+    r"^(?:\$\{[^}]*\}|\$[A-Za-z_]\w*|\{\{[^}]*\}\}|%\([^)]*\)s|%s|<[^>]*>)$"
+)
+
+# O detector mascara o que encontra; a evidência mascarada acaba citada em
+# documentação e em teste. Reencontrá-la e reportá-la seria o detector se
+# acusando a si próprio.
+_ALREADY_MASKED_RE = re.compile(r"\*{4,}")
 
 
 @dataclass(frozen=True)
@@ -127,8 +145,12 @@ def mask_secret(value: str) -> str:
 def mask_line(line: str, secret: str) -> str:
     """Mascara a credencial dentro da linha, preservando o contexto ao redor.
 
-    É o que vira `evidence` no achado: `API_KEY = "sk-1234…"` aparece como
-    `API_KEY = "sk-1***..."`, mostrando onde está o problema sem entregá-lo.
+    É o que vira `evidence` no achado: os primeiros caracteres do valor são
+    preservados e o resto vira asteriscos, mostrando onde está o problema — e
+    qual provedor emitiu a credencial — sem entregar a credencial em si.
+
+    O exemplo fica de fora de propósito: escrever um valor com forma de chave
+    real dentro da documentação é exatamente a prática que esta regra alerta.
     """
     if not secret:
         return line.strip()
@@ -136,7 +158,19 @@ def mask_line(line: str, secret: str) -> str:
 
 
 def _is_placeholder(value: str) -> bool:
-    return bool(_PLACEHOLDER_RE.match(value.strip()))
+    """Um valor que parece credencial mas não é uma.
+
+    Três famílias: convite para preencher (`changeme`, `your-key-here`),
+    interpolação de variável (`${VAR}`) e evidência já mascarada pelo próprio
+    detector. Nenhuma delas é um segredo vazado, e reportá-las é o caminho mais
+    curto para o usuário parar de ler o relatório.
+    """
+    valor = value.strip()
+    return bool(
+        _PLACEHOLDER_RE.match(valor)
+        or _INTERPOLATION_RE.match(valor)
+        or _ALREADY_MASKED_RE.search(valor)
+    )
 
 
 def detect_secrets(content: str) -> list[SecretMatch]:

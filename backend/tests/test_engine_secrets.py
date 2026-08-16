@@ -222,3 +222,45 @@ def test_database_url_evidence_masks_only_the_password():
     assert "appuser" in ocorrencia.masked_evidence
     assert "db.exemplo.com" in ocorrencia.masked_evidence
     assert "s3nh4Sup3rSecreta" not in ocorrencia.masked_evidence
+
+
+# --- calibragem do detector de credenciais -----------------------------------
+
+
+def test_interpolacao_de_variavel_nao_e_credencial():
+    """`${POSTGRES_PASSWORD}` é a ausência de uma credencial fixa, não uma.
+
+    O docker-compose deste projeto era acusado por seguir exatamente a prática
+    recomendada.
+    """
+    for valor in [
+        "DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/app",
+        "DATABASE_URL: postgresql://user:$DB_PASSWORD@db:5432/app",
+        "url: postgresql://user:{{ db_password }}@db:5432/app",
+        "url: postgresql://user:<sua-senha>@db:5432/app",
+    ]:
+        assert detect_secrets(valor) == [], valor
+
+
+def test_exemplo_de_documentacao_nao_e_credencial():
+    """`user:pass@host` e `USUARIO:SENHA@host` são a forma canônica de escrever
+    um exemplo de string de conexão."""
+    for valor in [
+        "postgresql+asyncpg://user:pass@host:5432/db",
+        "postgresql+asyncpg://USUARIO:SENHA@localhost:5432/codeinsight",
+    ]:
+        assert detect_secrets(valor) == [], valor
+
+
+def test_evidencia_ja_mascarada_nao_e_reportada():
+    """A saída do próprio detector acaba citada em documentação e em teste.
+    Reencontrá-la seria o detector se acusando a si mesmo."""
+    assert detect_secrets('API_KEY = "sk-1********"') == []
+
+
+def test_credencial_de_verdade_continua_sendo_detectada():
+    """A trava contra o excesso de tolerância: afrouxar o detector até ele parar
+    de acusar é tão ruim quanto o falso positivo."""
+    achados = detect_secrets("DATABASE_URL=postgresql://admin:R7pQ2xL9vNm4@prod.exemplo.com/app")
+    assert achados
+    assert "R7pQ2xL9vNm4" not in achados[0].masked_evidence
