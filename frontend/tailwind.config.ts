@@ -44,6 +44,9 @@ export default {
         },
         success: "hsl(var(--success))",
         warning: "hsl(var(--warning))",
+        // Variantes legíveis como texto: ver o comentário em index.css.
+        "success-text": "hsl(var(--success-text))",
+        "warning-text": "hsl(var(--warning-text))",
       },
       borderRadius: {
         lg: "var(--radius)",

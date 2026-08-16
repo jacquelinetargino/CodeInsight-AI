@@ -5,7 +5,7 @@ import type { AnalysisStatus } from "@/types";
 const CONFIG: Record<AnalysisStatus, { label: string; icon: typeof CheckCircle2; className: string }> = {
   queued: { label: "Na fila", icon: CircleDashed, className: "text-muted-foreground" },
   running: { label: "Analisando…", icon: Loader2, className: "text-primary" },
-  done: { label: "Concluída", icon: CheckCircle2, className: "text-success" },
+  done: { label: "Concluída", icon: CheckCircle2, className: "text-success-text" },
   failed: { label: "Falhou", icon: XCircle, className: "text-destructive" },
 };
 
