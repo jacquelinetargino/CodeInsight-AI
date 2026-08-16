@@ -145,14 +145,27 @@ def score_dimension(result: AnalyzerResult) -> DimensionScore:
     )
 
 
-def _risk_from_score(overall: float | None) -> RiskLevel:
+def risk_level_for(overall: float | None, has_critical_finding: bool) -> RiskLevel:
+    """Nível de risco a partir do score e da presença de achado crítico.
+
+    Pública porque a API precisa do mesmo veredito para análises já gravadas, e
+    duplicar a regra faria o relatório e a tela discordarem entre si.
+    """
     if overall is None:
         # Sem nenhuma dimensão avaliada não há base para afirmar risco baixo.
-        return RiskLevel.MEDIUM
-    for corte, nivel in _RISK_THRESHOLDS:
-        if overall >= corte:
-            return nivel
-    return RiskLevel.CRITICAL
+        nivel = RiskLevel.MEDIUM
+    else:
+        nivel = RiskLevel.CRITICAL
+        for corte, candidato in _RISK_THRESHOLDS:
+            if overall >= corte:
+                nivel = candidato
+                break
+
+    # Um crítico isolado num repositório de resto bom não deve ser diluído pela
+    # média: ele estabelece um piso.
+    if has_critical_finding and nivel in (RiskLevel.LOW, RiskLevel.MEDIUM):
+        return RiskLevel.HIGH
+    return nivel
 
 
 def score_repository(results: list[AnalyzerResult]) -> RepositoryScore:
@@ -172,17 +185,12 @@ def score_repository(results: list[AnalyzerResult]) -> RepositoryScore:
     else:
         overall = None
 
-    risco = _risk_from_score(overall)
-
-    # Um crítico isolado num repositório de resto bom não deve ser diluído pela
-    # média: ele estabelece um piso.
     tem_critico = any(
         achado.severity == Severity.CRITICAL
         for resultado in results
         for achado in resultado.findings
     )
-    if tem_critico and risco in (RiskLevel.LOW, RiskLevel.MEDIUM):
-        risco = RiskLevel.HIGH
+    risco = risk_level_for(overall, tem_critico)
 
     cobertas = {d.category for d in dimensoes}
     return RepositoryScore(
