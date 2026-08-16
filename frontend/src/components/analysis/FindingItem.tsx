@@ -8,6 +8,19 @@ import { useRequestFix } from "@/hooks/useAnalysis";
 import { ApiError } from "@/lib/api";
 import type { Finding, FixSuggestion } from "@/types";
 
+/**
+ * Traduz a confiança para linguagem, em vez de mostrar "0.7".
+ *
+ * Um número entre 0 e 1 não diz nada a quem lê o relatório; "detecção provável"
+ * diz. As faixas são grosseiras de propósito — fingir precisão decimal numa
+ * heurística seria falsa exatidão.
+ */
+function confidenceLabel(confidence: number): string {
+  if (confidence >= 0.9) return "Detecção confirmada";
+  if (confidence >= 0.7) return "Detecção provável";
+  return "Detecção possível — vale conferir";
+}
+
 export function FindingItem({ finding, analysisId }: { finding: Finding; analysisId: string }) {
   const requestFix = useRequestFix(analysisId);
   const [open, setOpen] = useState(false);
@@ -32,13 +45,37 @@ export function FindingItem({ finding, analysisId }: { finding: Finding; analysi
 
   return (
     <li className="rounded-lg border border-border bg-secondary/40 p-4">
-      <div className="mb-1 flex items-center justify-between gap-2">
+      <div className="mb-1 flex items-start justify-between gap-2">
         <h4 className="text-sm font-semibold">{finding.title}</h4>
         <SeverityBadge severity={finding.severity} />
       </div>
+
+      {(finding.rule_id || typeof finding.confidence === "number") && (
+        <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          {finding.rule_id && (
+            <code className="rounded bg-muted px-1.5 py-0.5 font-mono">{finding.rule_id}</code>
+          )}
+          {typeof finding.confidence === "number" && (
+            /* A confiança é declarada porque boa parte da análise é heurística:
+               esconder a dúvida faria uma inferência parecer certeza. */
+            <span>{confidenceLabel(finding.confidence)}</span>
+          )}
+        </div>
+      )}
+
       <p className="text-sm text-muted-foreground">{finding.description}</p>
+
+      {finding.evidence && (
+        <div className="mt-2">
+          <p className="mb-1 text-xs font-medium text-muted-foreground">Evidência</p>
+          <pre className="overflow-x-auto rounded-md bg-muted px-3 py-2 text-xs leading-relaxed">
+            <code>{finding.evidence}</code>
+          </pre>
+        </div>
+      )}
+
       {finding.suggestion && (
-        <p className="mt-1 text-sm">
+        <p className="mt-2 text-sm">
           <span className="font-medium">Sugestão:</span> {finding.suggestion}
         </p>
       )}

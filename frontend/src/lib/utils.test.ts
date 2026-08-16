@@ -3,13 +3,13 @@ import { cn, scoreColor } from "./utils";
 
 describe("scoreColor", () => {
   it("returns success color for high scores", () => {
-    expect(scoreColor(90)).toBe("text-success");
-    expect(scoreColor(80)).toBe("text-success");
+    expect(scoreColor(90)).toBe("text-success-text");
+    expect(scoreColor(80)).toBe("text-success-text");
   });
 
   it("returns warning color for medium scores", () => {
-    expect(scoreColor(65)).toBe("text-warning");
-    expect(scoreColor(50)).toBe("text-warning");
+    expect(scoreColor(65)).toBe("text-warning-text");
+    expect(scoreColor(50)).toBe("text-warning-text");
   });
 
   it("returns destructive color for low scores", () => {

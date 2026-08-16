@@ -232,3 +232,65 @@ async def test_falha_do_motor_marca_a_analise_como_failed(db_session, tmp_path, 
 async def test_analise_inexistente_nao_estoura(db_session, monkeypatch):
     monkeypatch.setattr(analysis_tasks, "AsyncSessionLocal", lambda: _SessionProxy(db_session))
     await analysis_tasks.run_repository_analysis(uuid.uuid4())
+
+
+# --- contrato exposto ao frontend -------------------------------------------
+
+
+async def _detalhe(db_session, analysis):
+    """Serializa a análise como a rota faz: relações carregadas de forma
+    explícita, porque lazy loading não funciona em contexto async."""
+    from app.schemas.analysis import AnalysisDetailRead
+
+    await db_session.refresh(
+        analysis, attribute_names=["results", "suggestions", "fix_suggestions"]
+    )
+    return AnalysisDetailRead.model_validate(analysis)
+
+
+@pytest.mark.asyncio
+async def test_a_api_entrega_o_que_o_motor_produziu(db_session, tmp_path, monkeypatch):
+    """Os campos do motor precisam atravessar o schema.
+
+    O schema Pydantic descarta silenciosamente o que não declara: antes desta
+    verificação, `rule_id`, `evidence` e `confidence` chegavam do banco e eram
+    removidos na saída — o frontend nunca via a informação mais útil do achado.
+    """
+
+    analysis = await _cenario(db_session, tmp_path, monkeypatch)
+    await analysis_tasks.run_repository_analysis(analysis.id)
+
+    detalhe = await _detalhe(db_session, analysis)
+
+    achado = next(
+        f for r in detalhe.results for f in r.findings if r.dimension is Dimension.QUALITY
+    )
+    assert achado.rule_id and achado.rule_id.startswith("QUA-")
+    assert achado.confidence is not None
+    assert achado.analyzer == "quality"
+
+
+@pytest.mark.asyncio
+async def test_a_api_deriva_o_nivel_de_risco(db_session, tmp_path, monkeypatch):
+    """Risco não é coluna: é derivado com a mesma função do motor, para que
+    relatório e tela nunca discordem."""
+
+    analysis = await _cenario(db_session, tmp_path, monkeypatch)
+    await analysis_tasks.run_repository_analysis(analysis.id)
+
+    detalhe = await _detalhe(db_session, analysis)
+
+    assert detalhe.risk_level is not None
+    # Todas as oito foram avaliadas nesta análise.
+    assert detalhe.unevaluated_dimensions == []
+
+
+@pytest.mark.asyncio
+async def test_analise_em_andamento_nao_recebe_risco(db_session, tmp_path, monkeypatch):
+    """Afirmar risco antes de a análise terminar seria inventar veredito."""
+
+    analysis = await _cenario(db_session, tmp_path, monkeypatch)
+    detalhe = await _detalhe(db_session, analysis)
+
+    assert detalhe.risk_level is None
+    assert detalhe.unevaluated_dimensions == []

@@ -11,8 +11,10 @@ import { ApiError } from "@/lib/api";
 
 const FEATURES = [
   { icon: ShieldCheck, title: "Segurança", desc: "Detecta segredos expostos, dependências vulneráveis e más práticas." },
-  { icon: ScanSearch, title: "Qualidade, arquitetura, testes e git", desc: "6 dimensões avaliadas, com score de 0 a 100 cada." },
-  { icon: Wand2, title: "README & correções", desc: "Gera documentação e sugestões de correção automaticamente." },
+  { icon: ScanSearch, title: "Oito dimensões", desc: "Score de 0 a 100 por dimensão e nível de risco do repositório." },
+  // A ressalva é deliberada: prometer README e correções sem dizer que
+  // dependem de configuração extra faria a tela mentir para quem não tem.
+  { icon: Wand2, title: "README & correções", desc: "Opcional, com provedor de IA configurado." },
 ];
 
 export function LoginPage() {
@@ -49,8 +51,9 @@ export function LoginPage() {
           CodeInsight <span className="text-primary">AI</span>
         </h1>
         <p className="max-w-md text-balance text-muted-foreground">
-          Analise qualquer repositório do GitHub com IA: segurança, qualidade, arquitetura,
-          documentação, testes e git — com score, sugestões e correções.
+          Analise qualquer repositório do GitHub em oito dimensões: segurança, qualidade,
+          dependências, arquitetura, testes, configuração, documentação e git — com score e
+          nível de risco, sem precisar de chave de API.
         </p>
       </div>
 

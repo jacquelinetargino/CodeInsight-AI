@@ -20,6 +20,11 @@
     --destructive-foreground: 0 0% 100%;
     --success: 152 60% 40%;
     --warning: 38 92% 50%;
+    /* Variantes para TEXTO. As vivas acima ficam para preenchimento, borda e
+       série de gráfico; como texto elas reprovam o contraste mínimo de 4.5:1
+       (medido: warning 2.08:1, success 3.13:1 sobre o fundo). */
+    --success-text: 152 65% 31%;
+    --warning-text: 38 95% 32%;
     --border: 240 6% 90%;
     --input: 240 6% 90%;
     --ring: 243 75% 59%;
@@ -43,6 +48,9 @@
     --destructive-foreground: 0 0% 100%;
     --success: 152 55% 45%;
     --warning: 38 92% 55%;
+    /* No escuro o ajuste é para o outro lado: as cores precisam clarear. */
+    --success-text: 152 55% 45%;
+    --warning-text: 38 92% 45%;
     --border: 240 10% 20%;
     --input: 240 10% 20%;
     --ring: 243 82% 68%;

@@ -93,6 +93,8 @@ export type Dimension =
   | "git";
 export type Severity = "low" | "medium" | "high" | "critical";
 
+export type RiskLevel = "low" | "medium" | "high" | "critical";
+
 export interface Finding {
   title: string;
   description: string;
@@ -100,6 +102,16 @@ export interface Finding {
   severity: Severity;
   file_path: string | null;
   line: number | null;
+
+  // Acrescentados pelo CodeInsight Engine. Opcionais porque análises gravadas
+  // antes do motor só têm os campos acima.
+  rule_id?: string | null;
+  category?: string | null;
+  line_end?: number | null;
+  evidence?: string | null;
+  /** 0 a 1. Boa parte da análise é heurística; a dúvida é declarada. */
+  confidence?: number | null;
+  analyzer?: string | null;
 }
 
 export interface AnalysisResult {
@@ -143,6 +155,10 @@ export interface AnalysisDetail extends Analysis {
   suggestions: Suggestion[];
   fix_suggestions: FixSuggestion[];
   has_readme: boolean;
+  /** Derivado pelo backend com a mesma regra do motor. Nulo enquanto a análise não terminou. */
+  risk_level?: RiskLevel | null;
+  /** Dimensões sem resultado: não avaliadas, o que é diferente de sem problema. */
+  unevaluated_dimensions?: Dimension[];
 }
 
 export interface DashboardHistoryItem {
@@ -184,6 +200,13 @@ export function dimensionLabel(dimension: string): string {
   if (dimension === "tests") return DIMENSION_LABELS.testing;
   return DIMENSION_LABELS[dimension as Dimension] ?? dimension;
 }
+
+export const RISK_LABELS: Record<RiskLevel, string> = {
+  low: "Risco baixo",
+  medium: "Risco moderado",
+  high: "Risco alto",
+  critical: "Risco crítico",
+};
 
 export const SEVERITY_LABELS: Record<Severity, string> = {
   low: "Baixa",
