@@ -10,6 +10,7 @@ específico.
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.base import AIProvider
+from app.engine.scoring import DIMENSION_WEIGHTS as ENGINE_DIMENSION_WEIGHTS
 from app.models.analysis import Analysis, AnalysisResult
 from app.models.enums import Dimension
 from app.models.fix_suggestion import FixSuggestion
@@ -19,25 +20,22 @@ from app.prompts import architecture, documentation, fix, git_health, quality, r
 from app.prompts import suggestions as suggestions_prompt
 from app.prompts import tests as tests_prompt
 
+# Caminho LEGADO: as dimensões que um provedor de IA sabe analisar por prompt.
+# É um subconjunto de `Dimension` — `dependencies` e `configuration` existem só
+# no motor, que não usa IA. Não é lacuna: é o motor cobrindo mais que os prompts.
 DIMENSION_MODULES = {
     Dimension.QUALITY: quality,
     Dimension.SECURITY: security,
     Dimension.ARCHITECTURE: architecture,
     Dimension.DOCUMENTATION: documentation,
-    Dimension.TESTS: tests_prompt,
+    Dimension.TESTING: tests_prompt,
     Dimension.GIT: git_health,
 }
 
-# Pesos usados para compor o score geral (0-100) a partir das 6 dimensões.
-# Segurança e qualidade seguem com o maior peso; testes e git entram com um
-# peso menor por serem sinais complementares, não o núcleo da avaliação.
+# Fonte única dos pesos: o motor. Duplicar a tabela aqui deixaria os dois
+# caminhos discordando sobre o mesmo repositório sem ninguém perceber.
 DIMENSION_WEIGHTS = {
-    Dimension.SECURITY: 0.25,
-    Dimension.QUALITY: 0.25,
-    Dimension.ARCHITECTURE: 0.15,
-    Dimension.DOCUMENTATION: 0.15,
-    Dimension.TESTS: 0.10,
-    Dimension.GIT: 0.10,
+    Dimension(categoria.value): peso for categoria, peso in ENGINE_DIMENSION_WEIGHTS.items()
 }
 
 

@@ -17,9 +17,11 @@ _env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)), autoescape=True)
 DIMENSION_LABELS = {
     Dimension.SECURITY: "Segurança",
     Dimension.QUALITY: "Qualidade de Código",
+    Dimension.DEPENDENCIES: "Dependências",
     Dimension.ARCHITECTURE: "Arquitetura",
+    Dimension.TESTING: "Testes",
+    Dimension.CONFIGURATION: "Configuração",
     Dimension.DOCUMENTATION: "Documentação",
-    Dimension.TESTS: "Testes",
     Dimension.GIT: "Git",
 }
 
