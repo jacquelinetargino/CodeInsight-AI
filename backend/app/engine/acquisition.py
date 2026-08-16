@@ -19,6 +19,7 @@ import shutil
 import tarfile
 import tempfile
 from collections.abc import AsyncIterator
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import httpx
@@ -304,12 +305,28 @@ async def acquire_repository(
         shutil.rmtree(workdir, ignore_errors=True)
 
 
-def iter_analyzable_files(root: Path) -> list[Path]:
-    """Arquivos candidatos à análise, com os diretórios ignorados podados antes
-    de descer neles — em repositório com `node_modules` commitado, essa diferença
-    decide se a análise termina."""
+@dataclass
+class DiscoveredFiles:
+    """Resultado da descoberta.
+
+    `oversized` existe porque arquivo grande demais para analisar ainda é um
+    fato relevante — um binário de 50 MB versionado é achado do analyzer de Git.
+    Descartá-lo em silêncio perderia essa informação.
+    """
+
+    analyzable: list[Path] = field(default_factory=list)
+    oversized: list[Path] = field(default_factory=list)
+
+
+def discover_files(root: Path) -> DiscoveredFiles:
+    """Percorre o repositório uma vez, separando o que dá para analisar do que
+    passou do teto de tamanho.
+
+    Os diretórios ignorados são podados antes de descer neles — em repositório
+    com `node_modules` commitado, essa diferença decide se a análise termina.
+    """
     settings = get_settings()
-    found: list[Path] = []
+    resultado = DiscoveredFiles()
 
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in IGNORED_DIRS]
@@ -318,15 +335,25 @@ def iter_analyzable_files(root: Path) -> list[Path]:
             if path.is_symlink():  # não seguimos links dentro do repositório
                 continue
             try:
-                if path.stat().st_size > settings.engine_max_file_bytes:
-                    continue
+                tamanho = path.stat().st_size
             except OSError:
                 continue
-            found.append(path)
-            if len(found) >= settings.engine_max_files:
-                return found
 
-    return found
+            if tamanho > settings.engine_max_file_bytes:
+                resultado.oversized.append(path)
+                continue
+
+            resultado.analyzable.append(path)
+            if len(resultado.analyzable) >= settings.engine_max_files:
+                return resultado
+
+    return resultado
+
+
+def iter_analyzable_files(root: Path) -> list[Path]:
+    """Apenas os arquivos analisáveis. Mantida com a assinatura original para
+    não quebrar quem já a usa."""
+    return discover_files(root).analyzable
 
 
 def is_binary(path: Path) -> bool:

@@ -15,9 +15,9 @@ import logging
 from pathlib import Path
 
 from app.core.config import get_settings
-from app.engine.acquisition import is_binary, iter_analyzable_files
+from app.engine.acquisition import discover_files, is_binary
 from app.engine.languages import detect_language
-from app.engine.models import FileInfo, RepositoryScan
+from app.engine.models import FileInfo, OversizedFile, RepositoryScan
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,22 @@ def scan_repository(root: Path) -> RepositoryScan:
     scan = RepositoryScan(root=str(root))
     total_bytes = 0
 
-    candidates = iter_analyzable_files(root)
+    descoberta = discover_files(root)
+    candidates = descoberta.analyzable
+
+    # Arquivo grande demais para analisar ainda é um fato relevante — um
+    # binário enorme versionado é achado do analyzer de Git. Só metadado: o
+    # conteúdo destes arquivos nunca é aberto.
+    for grande in descoberta.oversized:
+        try:
+            relative = _relative_path(root, grande)
+            size = grande.stat().st_size
+        except ScanError as exc:
+            logger.warning("Arquivo grande descartado no scan: %s", exc)
+            continue
+        except OSError:
+            continue
+        scan.oversized_files.append(OversizedFile(path=relative, size_bytes=size))
 
     # `iter_analyzable_files` para ao atingir o teto de arquivos. Bater exatamente
     # no limite é o sinal disponível de que pode haver mais coisa não vista.
