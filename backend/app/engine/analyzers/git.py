@@ -22,6 +22,8 @@ from app.engine.rules.git_activity import (
 )
 from app.engine.rules.git_rules import register_git_rules
 from app.engine.rules.registry import RuleRegistry
+from app.engine.rules.testing import is_test_file
+from app.models.enums import Severity
 
 logger = logging.getLogger(__name__)
 
@@ -79,16 +81,31 @@ class GitAnalyzer:
         todos = [f.path for f in scan.files] + [f.path for f in scan.oversized_files]
         for caminho in todos:
             categoria = classify_sensitive_file(caminho)
-            if categoria:
-                achados.append(
-                    self.registry.get("GIT-001").build_finding(
-                        analyzer=self.name,
-                        file_path=caminho,
-                        # Só o caminho e a categoria: o conteúdo nunca é lido.
-                        evidence=f"{caminho} ({categoria})",
-                        title=f"Arquivo sensível versionado: {categoria}",
-                    )
+            if not categoria:
+                continue
+
+            # Certificado numa pasta de fixtures é, quase sempre, gerado para o
+            # próprio teste. O achado continua saindo — rebaixado, porque tratar
+            # isso como crítico marcaria como arriscado praticamente todo projeto
+            # que testa TLS.
+            em_teste = is_test_file(caminho)
+            achados.append(
+                self.registry.get("GIT-001").build_finding(
+                    analyzer=self.name,
+                    file_path=caminho,
+                    # Só o caminho e a categoria: o conteúdo nunca é lido.
+                    evidence=f"{caminho} ({categoria})",
+                    title=f"Arquivo sensível versionado: {categoria}",
+                    severity=Severity.LOW if em_teste else None,
+                    description=(
+                        "Arquivo sensível em caminho de teste. Costuma ser uma fixture "
+                        "gerada para o próprio teste, mas confirme que não é uma "
+                        "credencial real antes de descartar."
+                        if em_teste
+                        else None
+                    ),
                 )
+            )
 
         # Passar do teto de análise (2 MB) não é, por si, um problema: o que
         # incha o repositório de forma permanente é a ordem de grandeza acima.

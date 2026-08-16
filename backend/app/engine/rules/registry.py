@@ -46,12 +46,15 @@ class Rule(BaseModel):
         title: str | None = None,
         description: str | None = None,
         confidence: float | None = None,
+        severity: Severity | None = None,
     ) -> Finding:
         """Cria um achado herdando categoria, severidade e recomendação da regra.
 
-        `title`, `description` e `confidence` aceitam sobrescrita porque um
-        analyzer às vezes tem contexto para ser mais específico — por exemplo,
-        rebaixar a confiança quando a detecção veio de heurística e não de AST.
+        `title`, `description`, `confidence` e `severity` aceitam sobrescrita
+        porque um analyzer às vezes tem contexto para ser mais específico — por
+        exemplo, rebaixar a confiança quando a detecção veio de heurística e não
+        de AST, ou rebaixar a severidade de um certificado que está numa pasta
+        de fixtures de teste.
         """
         final_title = title or self.name
         return Finding(
@@ -63,7 +66,7 @@ class Rule(BaseModel):
             ),
             rule_id=self.rule_id,
             category=self.category,
-            severity=self.severity,
+            severity=severity or self.severity,
             title=final_title,
             description=description or self.description,
             file_path=file_path,

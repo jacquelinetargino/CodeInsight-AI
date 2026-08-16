@@ -19,6 +19,8 @@ from app.engine.rules.python_ast import analyze_python
 from app.engine.rules.registry import RuleRegistry
 from app.engine.rules.secrets import detect_secrets
 from app.engine.rules.security_rules import register_security_rules
+from app.engine.rules.testing import is_test_file
+from app.models.enums import Severity
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +122,12 @@ class SecurityAnalyzer:
 
     def _scan_secrets(self, relative_path: str, content: str) -> list[Finding]:
         achados: list[Finding] = []
+        # Uma chave numa pasta de fixtures é quase sempre um certificado gerado
+        # para o próprio teste. "Quase sempre" não é "sempre", então o achado
+        # continua saindo — rebaixado, para não disparar o piso de risco crítico
+        # de um repositório inteiro por causa de um arquivo de teste.
+        em_teste = is_test_file(relative_path)
+
         for ocorrencia in detect_secrets(content):
             rule_id = _SECRET_RULE_BY_PATTERN.get(ocorrencia.pattern_name, _DEFAULT_SECRET_RULE)
             regra = self.registry.get(rule_id)
@@ -136,6 +144,14 @@ class SecurityAnalyzer:
                     # A confiança do padrão manda: um prefixo proprietário vale
                     # mais que uma atribuição genérica.
                     confidence=min(regra.confidence, ocorrencia.confidence),
+                    severity=Severity.LOW if em_teste else None,
+                    description=(
+                        f"{regra.description}\n\nEste arquivo está em um caminho de teste, "
+                        "onde credenciais costumam ser geradas para o próprio teste. "
+                        "Confirme que não é uma credencial real antes de descartar."
+                        if em_teste
+                        else None
+                    ),
                 )
             )
         return achados
@@ -198,12 +214,25 @@ class SecurityAnalyzer:
         achados: list[Finding] = []
         for arquivo in scan.files:
             nome = Path(arquivo.path).name
-            if nome in _ENV_FILENAMES:
-                achados.append(
-                    regra.build_finding(
-                        analyzer=self.name,
-                        file_path=arquivo.path,
-                        evidence=f"{arquivo.path} ({arquivo.size_bytes} bytes)",
-                    )
+            if nome not in _ENV_FILENAMES:
+                continue
+
+            # Um `.env` dentro de uma aplicação de teste é fixture. Mesmo
+            # critério dos certificados: continua sendo reportado, rebaixado.
+            em_teste = is_test_file(arquivo.path)
+            achados.append(
+                regra.build_finding(
+                    analyzer=self.name,
+                    file_path=arquivo.path,
+                    evidence=f"{arquivo.path} ({arquivo.size_bytes} bytes)",
+                    severity=Severity.LOW if em_teste else None,
+                    description=(
+                        f"{regra.description}\n\nEste arquivo está em um caminho de teste, "
+                        "onde costuma ser uma fixture. Confirme que não contém credencial "
+                        "real antes de descartar."
+                        if em_teste
+                        else None
+                    ),
                 )
+            )
         return achados
