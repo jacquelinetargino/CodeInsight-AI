@@ -54,4 +54,11 @@ async def run_migrations_online() -> None:
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    asyncio.run(run_migrations_online())
+    # Conexão injetada por quem chamou (a suíte usa isso para rodar as migrations
+    # dentro de um schema descartável). Sem ela, o comportamento é o de sempre:
+    # abrir a própria conexão a partir de DATABASE_URL.
+    injected = config.attributes.get("connection")
+    if injected is not None:
+        do_run_migrations(injected)
+    else:
+        asyncio.run(run_migrations_online())
