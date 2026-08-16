@@ -356,3 +356,31 @@ def test_analyzes_this_project():
     resultado = GitAnalyzer().analyze(raiz, scan_repository(raiz))
 
     assert "GIT-001" not in {f.rule_id for f in resultado.findings}
+
+
+# --- calibragem: fixtures de teste ------------------------------------------
+
+
+def test_certificado_em_pasta_de_teste_e_rebaixado(tmp_path):
+    """Um `.pem` em fixtures é quase sempre gerado para o próprio teste.
+
+    Tratá-lo como crítico marcaria como arriscado praticamente todo projeto que
+    testa TLS — medido em psf/requests, eram 4 achados críticos assim.
+    """
+    build_repo(tmp_path, {"tests/certs/server.pem": "conteudo\n"})
+    achado = next(f for f in run(tmp_path).findings if f.rule_id == "GIT-001")
+
+    assert achado.severity.value == "low"
+    assert "caminho de teste" in achado.description
+
+
+def test_certificado_fora_de_teste_continua_critico(tmp_path):
+    build_repo(tmp_path, {"deploy/server.pem": "conteudo\n"})
+    achado = next(f for f in run(tmp_path).findings if f.rule_id == "GIT-001")
+    assert achado.severity.value == "critical"
+
+
+def test_rebaixar_nao_e_silenciar(tmp_path):
+    """O achado continua saindo: fixture é o caso comum, não o único."""
+    build_repo(tmp_path, {"tests/certs/server.pem": "conteudo\n"})
+    assert "GIT-001" in rule_ids(run(tmp_path))
