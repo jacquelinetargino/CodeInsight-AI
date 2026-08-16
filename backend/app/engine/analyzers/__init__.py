@@ -9,6 +9,7 @@ from app.engine.analyzers.base import Analyzer, AnalyzerResult
 from app.engine.analyzers.configuration import ConfigurationAnalyzer
 from app.engine.analyzers.dependency import DependencyAnalyzer
 from app.engine.analyzers.documentation import DocumentationAnalyzer
+from app.engine.analyzers.git import GitAnalyzer
 from app.engine.analyzers.security import SecurityAnalyzer
 from app.engine.analyzers.testing import TestingAnalyzer
 
@@ -19,6 +20,7 @@ __all__ = [
     "ConfigurationAnalyzer",
     "DependencyAnalyzer",
     "DocumentationAnalyzer",
+    "GitAnalyzer",
     "SecurityAnalyzer",
     "TestingAnalyzer",
 ]
