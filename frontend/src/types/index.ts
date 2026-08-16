@@ -80,7 +80,17 @@ export interface GithubRepoSummary {
 }
 
 export type AnalysisStatus = "queued" | "running" | "done" | "failed";
-export type Dimension = "security" | "quality" | "architecture" | "documentation" | "tests" | "git";
+// Espelha `Dimension` do backend (app/models/enums.py) e `FindingCategory` do
+// motor. `testing` chamava-se `tests` antes da migration 0002.
+export type Dimension =
+  | "security"
+  | "quality"
+  | "dependencies"
+  | "architecture"
+  | "testing"
+  | "configuration"
+  | "documentation"
+  | "git";
 export type Severity = "low" | "medium" | "high" | "critical";
 
 export interface Finding {
@@ -155,11 +165,25 @@ export interface DashboardSummary {
 export const DIMENSION_LABELS: Record<Dimension, string> = {
   security: "Segurança",
   quality: "Qualidade",
+  dependencies: "Dependências",
   architecture: "Arquitetura",
+  testing: "Testes",
+  configuration: "Configuração",
   documentation: "Documentação",
-  tests: "Testes",
   git: "Git",
 };
+
+/**
+ * Rótulo de uma dimensão, tolerante a valores desconhecidos.
+ *
+ * Frontend e backend são publicados separadamente, então há uma janela em que
+ * esta build pode conversar com um backend anterior à migration 0002 e receber
+ * `tests`. Sem o fallback, o card apareceria com o título em branco.
+ */
+export function dimensionLabel(dimension: string): string {
+  if (dimension === "tests") return DIMENSION_LABELS.testing;
+  return DIMENSION_LABELS[dimension as Dimension] ?? dimension;
+}
 
 export const SEVERITY_LABELS: Record<Severity, string> = {
   low: "Baixa",

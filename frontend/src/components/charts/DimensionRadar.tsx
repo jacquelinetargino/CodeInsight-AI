@@ -6,11 +6,11 @@ import {
   RadarChart,
   ResponsiveContainer,
 } from "recharts";
-import { DIMENSION_LABELS, type AnalysisResult } from "@/types";
+import { dimensionLabel, type AnalysisResult } from "@/types";
 
 export function DimensionRadar({ results }: { results: AnalysisResult[] }) {
   const data = results.map((r) => ({
-    dimension: DIMENSION_LABELS[r.dimension],
+    dimension: dimensionLabel(r.dimension),
     score: r.score,
   }));
 
