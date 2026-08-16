@@ -25,6 +25,18 @@ class FileInfo(BaseModel):
         return not self.is_binary and self.language is not None
 
 
+class OversizedFile(BaseModel):
+    """Arquivo grande demais para analisar.
+
+    Entra no inventário por metadado e nunca é aberto. O tamanho vem junto
+    porque quem consome precisa distinguir "passou pouco do teto de análise" de
+    "incha o repositório permanentemente" — são problemas diferentes.
+    """
+
+    path: str = Field(description="Caminho relativo à raiz, sempre com barras POSIX")
+    size_bytes: int
+
+
 class RepositoryScan(BaseModel):
     """Resultado do scan. `truncated` existe porque um scan parcial apresentado
     como completo produz score enganoso — quem consome precisa saber que só viu
@@ -35,6 +47,10 @@ class RepositoryScan(BaseModel):
     total_bytes: int = 0
     languages: dict[str, int] = Field(
         default_factory=dict, description="Bytes por linguagem, ignorando binários"
+    )
+    oversized_files: list[OversizedFile] = Field(
+        default_factory=list,
+        description="Arquivos acima do teto de tamanho: inventariados, nunca lidos",
     )
     truncated: bool = False
     truncation_reason: str | None = None

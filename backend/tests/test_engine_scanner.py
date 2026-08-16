@@ -234,8 +234,11 @@ def test_path_outside_root_is_rejected(tmp_path: Path, monkeypatch):
     intruso = tmp_path / "intruso.py"
     intruso.write_text("print('fora')", encoding="utf-8")
 
+    from app.engine.acquisition import DiscoveredFiles
+
     monkeypatch.setattr(
-        "app.engine.scanner.iter_analyzable_files", lambda root: [repo / "app.py", intruso]
+        "app.engine.scanner.discover_files",
+        lambda root: DiscoveredFiles(analyzable=[repo / "app.py", intruso]),
     )
 
     scan = scan_repository(repo)
