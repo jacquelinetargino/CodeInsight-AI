@@ -46,7 +46,7 @@ export function DashboardPage() {
     <AppShell>
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Analise qualquer repositório do GitHub com IA.</p>
+        <p className="text-muted-foreground">Analise qualquer repositório do GitHub em oito dimensões.</p>
       </div>
 
       {loadingSummary ? (
