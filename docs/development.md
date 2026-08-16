@@ -10,7 +10,7 @@ docker compose up --build
 
 - Frontend: http://localhost:5173 (hot-reload)
 - Backend: http://localhost:8000/docs (hot-reload via `--reload` do uvicorn)
-- Worker Celery e Postgres/Redis também sobem junto
+- Postgres sobe junto. Não há worker separado: a análise roda como `BackgroundTask`
 
 Rebuildar só um serviço depois de mudar dependências:
 
@@ -21,12 +21,12 @@ docker compose up --build backend
 Ver logs de um serviço específico:
 
 ```bash
-docker compose logs -f worker
+docker compose logs -f backend
 ```
 
 ## Sem Docker
 
-Requer Python 3.12, Node 20, PostgreSQL 16 e Redis 7 instalados localmente.
+Requer Python 3.12, Node 20 e PostgreSQL 16 instalados localmente.
 
 ### Backend
 
@@ -42,11 +42,8 @@ alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-Em outro terminal, o worker:
-
-```bash
-celery -A app.core.celery_app worker --loglevel=info
-```
+Não há worker separado para subir: a análise roda como `BackgroundTask` dentro do
+próprio processo do backend.
 
 ### Frontend
 

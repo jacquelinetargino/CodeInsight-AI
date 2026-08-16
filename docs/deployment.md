@@ -19,8 +19,10 @@ Isso sobe:
 
 - `frontend` — Nginx servindo o build estático, porta `80`
 - `backend` — uvicorn com múltiplos workers, porta `8000`
-- `worker` — Celery worker
-- `postgres`, `redis`
+- `postgres`
+
+A análise roda como `BackgroundTask` dentro do próprio backend — não há worker separado
+nem broker para hospedar.
 
 ## Checklist antes de ir para produção
 
@@ -54,6 +56,6 @@ docker compose exec backend alembic upgrade head
 ## Sem Docker
 
 O backend é uma aplicação ASGI padrão (`uvicorn app.main:app`) e pode ser implantado
-em qualquer plataforma que suporte Python 3.12 + PostgreSQL + Redis (Render, Railway,
-Fly.io, um VPS com systemd, etc.). O frontend é uma SPA estática após `npm run build`
+em qualquer plataforma que suporte Python 3.12 + PostgreSQL (FastAPI Cloud, Render,
+Railway, Fly.io, um VPS com systemd, etc.). Nenhum serviço de fila é necessário. O frontend é uma SPA estática após `npm run build`
 (pasta `dist/`) e pode ser servido por qualquer CDN/host estático.

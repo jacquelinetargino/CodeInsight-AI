@@ -1,6 +1,6 @@
 # 🤖 CodeInsight AI
 
-> AI-powered GitHub Repository Analyzer
+> Análise estática de repositórios do GitHub — sem chave de API, sem crédito, sem serviço externo
 
 <!--
   Badges de CI/Tests/Linguagem principal só renderizam depois que os workflows
@@ -10,52 +10,61 @@
 
 [![CI](https://github.com/jacquelinetargino/CodeInsight-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/jacquelinetargino/CodeInsight-AI/actions/workflows/ci.yml)
 [![Tests](https://github.com/jacquelinetargino/CodeInsight-AI/actions/workflows/tests.yml/badge.svg)](https://github.com/jacquelinetargino/CodeInsight-AI/actions/workflows/tests.yml)
-[![Version](https://img.shields.io/badge/version-0.2.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Top language](https://img.shields.io/github/languages/top/jacquelinetargino/CodeInsight-AI)](https://github.com/jacquelinetargino/CodeInsight-AI)
 
-Uma plataforma open source para análise inteligente de repositórios do GitHub,
-utilizando provedores de Inteligência Artificial configuráveis.
+Uma plataforma open source para análise de repositórios do GitHub. O núcleo é o
+**CodeInsight Engine**: um motor de análise estática próprio, escrito em Python, que
+roda inteiramente no seu servidor.
 
-Avalia **segurança**, **qualidade de código**, **arquitetura**, **documentação**,
-**testes** e **saúde do histórico Git** — com score de 0 a 100 por dimensão, achados
-com severidade/arquivo/linha, correções de código sob demanda, geração automática de
-README, histórico de análises, dashboard de agregados e exportação de relatórios em PDF.
+Avalia **segurança**, **qualidade de código**, **dependências**, **arquitetura**,
+**testes**, **configuração**, **documentação** e **saúde do histórico Git** — com score
+de 0 a 100 por dimensão, nível de risco do repositório, e achados com regra, severidade,
+arquivo, linha, evidência e confiança.
+
+**Você não precisa de chave de API, crédito em serviço de IA nem conexão com nenhum
+provedor externo para analisar um repositório.** A IA é opcional e serve apenas para
+enriquecer o resultado — veja [A IA é opcional](#a-ia-é-opcional).
 
 ---
 
-## 🔐 API Keys & AI Credits
+## A IA é opcional
 
-> **🔐 API Keys:** This project does not provide or share AI API credits. Users must configure their own API credentials.
+A análise é feita pelo **CodeInsight Engine**, que roda no seu servidor e **não usa IA**.
+Instalar o projeto e analisar repositórios não exige nenhuma chave, crédito ou conta em
+serviço de terceiros.
 
-CodeInsight AI is an open-source, self-hosted project.
+Um provedor de IA, se configurado, acrescenta quatro recursos — e só eles:
 
-Each user is responsible for configuring their own AI provider and API credentials.
+| Recurso | Precisa de IA? |
+|---|---|
+| Análise das oito dimensões, score e nível de risco | Não |
+| Achados com regra, severidade, arquivo, linha e evidência | Não |
+| Relatório em PDF, histórico, dashboard | Não |
+| Sugestões priorizadas de melhoria | Sim |
+| Correção de código sob demanda | Sim |
+| Geração automática de README | Sim |
+| Explicação em linguagem natural de um achado | Sim |
 
-The project does **NOT** provide shared AI credits and does **NOT** use the author's
-personal API keys.
+Sem provedor configurado, esses quatro simplesmente não aparecem. Nada falha, nada fica
+pela metade, e o score não muda.
 
-Users are responsible for any costs associated with the AI provider they choose.
+### Se você quiser habilitá-los
 
-Supported providers may include:
-
-- Claude
-- OpenAI
-- Google Gemini
-- Local AI models
-- Other compatible providers
-
-As credenciais devem ser configuradas através de variáveis de ambiente:
+O projeto **não fornece créditos de IA** e **não usa a chave de ninguém**: cada pessoa
+configura o próprio provedor e responde pelos custos dele. São suportados Claude
+(Anthropic), OpenAI, Google Gemini e qualquer servidor local compatível com a API da
+OpenAI (Ollama, LM Studio).
 
 ```env
-AI_PROVIDER=
-AI_API_KEY=
-AI_MODEL=
+AI_PROVIDER=claude   # claude | openai | gemini | local
+AI_API_KEY=...
+AI_MODEL=claude-sonnet-5
 ```
 
-Nunca coloque credenciais reais no README, em issues, ou em qualquer arquivo
-versionado do repositório — use sempre o `.env` local (fora do controle de versão,
-veja [`.gitignore`](.gitignore)).
+Nunca coloque credenciais reais no README, em issues, ou em qualquer arquivo versionado
+— use sempre o `.env` local (fora do controle de versão, veja [`.gitignore`](.gitignore)).
 
 ---
 
@@ -65,7 +74,7 @@ veja [`.gitignore`](.gitignore)).
 
 **Type:** Open Source / Self-Hosted
 
-**Purpose:** AI-powered GitHub Repository Analysis
+**Purpose:** Static analysis of GitHub repositories (self-hosted engine, optional AI)
 
 **License:** [MIT](LICENSE)
 
@@ -77,44 +86,51 @@ veja [`.gitignore`](.gitignore)).
 - **Dashboard**: repositórios analisados, quantidade de análises, score médio, problemas encontrados, melhorias sugeridas, histórico recente
 - **Integração com GitHub sem OAuth**: analise qualquer repositório público só com `owner/repo` ou a URL; conecte opcionalmente um Personal Access Token para repositórios privados e listagem automática dos seus repositórios
 - **Dados ricos do repositório**: nome, descrição, linguagens, branches, commits, issues, pull requests, contribuidores e estrutura de arquivos
-- **Análise por IA em 6 dimensões**: segurança, qualidade, arquitetura, documentação, testes e git — cada achado traz severidade, arquivo, linha (quando disponível), descrição e sugestão
-- **Correções sob demanda**: peça uma correção para qualquer achado específico — a IA retorna código atual, código sugerido e a explicação; **nada é alterado no repositório automaticamente**
-- **Geração automática de README.md** a partir da análise
+- **Análise estática em 8 dimensões**, sem IA: segurança, qualidade, dependências, arquitetura, testes, configuração, documentação e git
+- **Achados rastreáveis**: cada um traz identificador de regra, severidade, arquivo, linha, evidência e **confiança** — boa parte da análise é heurística, e a dúvida é declarada em vez de escondida
+- **Score e nível de risco**: 0 a 100 por dimensão e um veredito agregado. Dimensão não avaliada recebe "não avaliado", nunca nota cheia
 - **Histórico completo** de todas as análises por repositório
 - **Exportação de relatório em PDF**
-- **Múltiplos provedores de IA** (Claude, OpenAI, Gemini ou um modelo local) trocáveis por variável de ambiente — veja [`docs/ai-providers.md`](docs/ai-providers.md)
+- *(opcional, com IA)* **Sugestões priorizadas**, **correções sob demanda** (**nada é alterado no repositório automaticamente**), **geração de README** e **explicação de achados** — veja [`docs/ai-providers.md`](docs/ai-providers.md)
 
 ## Tecnologias
 
 | Camada | Tecnologias |
 |---|---|
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS, TanStack Query, Zustand |
-| Backend | Python, FastAPI, SQLAlchemy 2.0 (async), Alembic, Celery, Redis |
+| Backend | Python, FastAPI, SQLAlchemy 2.0 (async), Alembic |
+| Motor de análise | CodeInsight Engine — `ast` da biblioteca padrão para Python, análise textual para JS/TS. Sem dependência externa de análise |
 | Banco de dados | PostgreSQL |
-| IA | Interface `AIProvider` própria — Claude (Anthropic), OpenAI, Gemini (Google) ou qualquer servidor local compatível com a API da OpenAI |
+| IA (opcional) | Interface `AIProvider` própria — Claude (Anthropic), OpenAI, Gemini (Google) ou qualquer servidor local compatível com a API da OpenAI |
 | Integração | GitHub REST API |
 | Infra | Docker, Docker Compose, GitHub Actions (CI/CD) |
 
 ## Arquitetura
 
 ```
-┌──────────────────┐      Bearer JWT       ┌───────────────────┐
-│  React + TS SPA   │ <──────────────────> │   FastAPI backend   │
-└──────────────────┘       REST             └─────────┬──────────┘
-                                                        │
-                    ┌────────────────────────────────────┼───────────────────────────┐
-                    │                                     │                            │
-             ┌──────▼──────┐                    ┌─────────▼─────────┐        ┌─────────▼─────────┐
-             │ PostgreSQL   │                    │ Redis + Celery     │        │  AIProvider         │
-             │ (usuários,   │                    │ worker (jobs de    │        │  (interface)         │
-             │ análises)    │                    │ análise async)     │        │  ├─ ClaudeProvider    │
-             └──────────────┘                    └─────────┬──────────┘        │  ├─ OpenAIProvider    │
-                                                              │                   │  ├─ GeminiProvider    │
-                                                    ┌─────────▼─────────┐        │  └─ LocalAIProvider   │
-                                                    │   GitHub REST API   │        └───────────────────┘
-                                                    │ (pública + PAT opc.) │
-                                                    └─────────────────────┘
+┌───────────────────┐     Bearer JWT      ┌──────────────────────┐
+│   React + TS SPA   │ <─────────────────> │   FastAPI backend     │
+└───────────────────┘        REST          └──────────┬───────────┘
+                                                      │
+                 ┌────────────────────────────────────┼────────────────────────┐
+                 │                                    │                        │
+       ┌─────────▼─────────┐         ┌────────────────▼───────────────┐        │
+       │    PostgreSQL      │         │      CodeInsight Engine         │        │
+       │ (usuários,         │         │   (BackgroundTask, sem IA)      │        │
+       │  análises)         │         │                                 │        │
+       └────────────────────┘         │  acquisition → scanner          │        │
+                                      │      → 8 analyzers → scoring    │        │
+                                      └────────────────┬────────────────┘        │
+                                                       │                         │
+                                        ┌──────────────▼─────────┐   ┌───────────▼──────────┐
+                                        │    GitHub REST API      │   │  AIProvider           │
+                                        │ (tarball + metadados;   │   │  OPCIONAL             │
+                                        │  pública + PAT opc.)    │   │  só enriquecimento    │
+                                        └─────────────────────────┘   └───────────────────────┘
 ```
+
+O caminho da análise não passa pelo `AIProvider`. Ele fica ao lado, e só é acionado
+depois que a análise já terminou e foi gravada.
 
 Documentação detalhada em [`docs/architecture.md`](docs/architecture.md).
 
@@ -124,24 +140,25 @@ Documentação detalhada em [`docs/architecture.md`](docs/architecture.md).
 2. Informa `owner/repo` ou cola a URL de um repositório do GitHub (público — nenhum
    token necessário). Opcionalmente conecta um Personal Access Token em
    **Configurações** para repositórios privados.
-3. Dispara uma análise: um worker Celery coleta o código, as linguagens, branches,
-   commits, issues, PRs e contribuidores, e chama o provedor de IA configurado uma vez
-   por dimensão (segurança, qualidade, arquitetura, documentação, testes, git).
-4. Os resultados (score + achados com severidade/arquivo/linha/sugestão) ficam
-   disponíveis no dashboard, junto com sugestões de melhoria priorizadas.
-5. Para qualquer achado específico, você pode pedir uma correção — a IA responde com
-   código atual, código sugerido e a explicação, sem tocar no seu repositório.
-6. Você pode gerar um README, exportar tudo em PDF, e consultar o histórico completo
-   a qualquer momento.
+3. Dispara uma análise. O motor baixa o tarball do repositório para um diretório
+   temporário, inventaria os arquivos e roda os oito analyzers sobre eles. **Nada do
+   repositório é executado** — só lido: a análise de Python usa a AST da biblioteca
+   padrão, e a de JS/TS é textual. O diretório temporário é apagado ao final, inclusive
+   em erro ou timeout.
+4. Os resultados ficam disponíveis no dashboard: score por dimensão, nível de risco e
+   cada achado com regra, severidade, arquivo, linha, evidência e confiança.
+5. Você pode exportar tudo em PDF e consultar o histórico completo a qualquer momento.
+6. *(opcional)* Se houver provedor de IA configurado, sugestões priorizadas são geradas
+   a partir dos achados, e você pode pedir a correção de um achado específico ou a
+   geração de um README. Nada disso altera o seu repositório.
 
 ## Instalação
 
 ### Pré-requisitos
 
 - Docker e Docker Compose
-- Uma chave de API de pelo menos um provedor de IA suportado (Anthropic, OpenAI ou
-  Google) — ou um servidor local compatível com a API da OpenAI (Ollama, LM Studio, etc.)
-  **por sua própria conta** (veja "API Keys & AI Credits" acima)
+
+É só isso. Nenhuma chave de API é necessária para analisar repositórios.
 
 ```bash
 git clone https://github.com/jacquelinetargino/CodeInsight-AI.git
@@ -162,10 +179,11 @@ ENCRYPTION_KEY=...
 # GitHub (opcional — só para elevar o rate limit em repos públicos)
 GITHUB_TOKEN=
 
-# Provedor de IA (obrigatório escolher um — sua própria chave, veja aviso acima)
-AI_PROVIDER=claude   # claude | openai | gemini | local
-AI_API_KEY=...
-AI_MODEL=claude-sonnet-5
+# Provedor de IA (OPCIONAL — deixe em branco e a análise funciona igual;
+# habilita apenas sugestões, correções, README e explicações)
+AI_PROVIDER=
+AI_API_KEY=
+AI_MODEL=
 ```
 
 Gere os segredos:
@@ -223,15 +241,22 @@ CodeInsight-AI/
 ├── frontend/               # SPA React + TypeScript
 ├── backend/
 │   └── app/
-│       ├── api/routes/      # Endpoints REST
-│       ├── core/             # Config, segurança, Celery
-│       ├── models/           # Modelos SQLAlchemy
-│       ├── schemas/          # Schemas Pydantic
-│       ├── repositories/     # Acesso a dados (Repository pattern)
-│       ├── services/         # Lógica de negócio
-│       ├── ai/                # Interface AIProvider + providers + factory
-│       ├── tasks/             # Tasks Celery
-│       └── prompts/           # Templates de prompt por dimensão
+│       ├── engine/           # CodeInsight Engine — o motor de análise
+│       │   ├── acquisition.py # Download e extração segura do tarball
+│       │   ├── scanner.py     # Inventário de arquivos
+│       │   ├── analyzers/     # Um por dimensão (8)
+│       │   ├── rules/         # Detectores e catálogos de regras
+│       │   ├── scoring.py     # Score por dimensão e nível de risco
+│       │   └── pipeline.py    # Orquestração da análise
+│       ├── api/routes/       # Endpoints REST
+│       ├── core/              # Config, segurança, banco
+│       ├── models/            # Modelos SQLAlchemy
+│       ├── schemas/           # Schemas Pydantic
+│       ├── repositories/      # Acesso a dados (Repository pattern)
+│       ├── services/          # Lógica de negócio
+│       ├── ai/                 # Interface AIProvider (OPCIONAL) + factory
+│       ├── tasks/              # Execução em segundo plano
+│       └── prompts/            # Templates de prompt (caminho de IA)
 ├── docs/                     # Documentação detalhada
 ├── .github/workflows/         # CI/CD
 └── docker-compose.yml
@@ -247,7 +272,16 @@ Veja também [backend/README.md](backend/README.md) e [frontend/README.md](front
 - Autenticação via JWT Bearer; rotas protegidas por dependência do FastAPI
 - Rate limiting nos endpoints mais sensíveis (criação de análise, correções)
 - CORS restrito ao domínio do frontend
-- Nenhum código enviado pelo usuário é executado — apenas analisado como texto pela IA
+- **Nenhum código do repositório analisado é executado.** Não há `subprocess`, `shell`,
+  `eval`, `exec`, importação dinâmica, execução de gerenciador de pacotes, script de
+  instalação ou Makefile. A análise de Python usa a AST da biblioteca padrão, que faz
+  parsing sem avaliar; a de JS/TS é textual
+- O tarball baixado é tratado como hostil: limite de bytes durante o download, recusa de
+  caminhos que escapam do destino, symlinks descartados, teto de arquivos e de tamanho
+  descomprimido, e allowlist de hosts para evitar SSRF
+- Conteúdo de arquivo sensível nunca é lido nem reportado: o achado traz o caminho, que é
+  o que se precisa para agir
+- Evidência de credencial já vem mascarada do detector — o valor real não chega ao banco
 
 Política completa de divulgação de vulnerabilidades em [`SECURITY.md`](SECURITY.md) e
 detalhes técnicos em [`docs/security.md`](docs/security.md).
