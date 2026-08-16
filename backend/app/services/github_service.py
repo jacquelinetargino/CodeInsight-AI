@@ -8,12 +8,16 @@ usado quando presente (repositórios privados, rate limit maior). Veja
 
 import asyncio
 import base64
+import logging
 import re
 from typing import Any
 
 import httpx
 
 from app.core.config import get_settings
+from app.engine.rules.git_activity import BranchInfo, CommitInfo, GitActivity
+
+logger = logging.getLogger(__name__)
 
 GITHUB_API_BASE = "https://api.github.com"
 
@@ -96,7 +100,10 @@ def _headers(access_token: str | None) -> dict[str, str]:
 async def _get(
     path: str, access_token: str | None, params: dict[str, Any] | None = None
 ) -> httpx.Response:
-    async with httpx.AsyncClient(timeout=20) as client:
+    # follow_redirects: um repositório renomeado responde 301 para o caminho
+    # novo. Sem seguir, a análise de qualquer repositório que já mudou de nome
+    # falhava inteira — e renomear repositório é comum.
+    async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
         return await client.get(
             f"{GITHUB_API_BASE}{path}", headers=_headers(access_token), params=params
         )
@@ -253,3 +260,46 @@ async def collect_git_activity_summary(access_token: str | None, full_name: str)
         lines.append(f"- {message} (por {author})")
 
     return "\n".join(lines)
+
+
+async def build_git_activity(
+    access_token: str | None, full_name: str, default_branch: str
+) -> GitActivity | None:
+    """Traduz a API do GitHub para o `GitActivity` do motor.
+
+    Devolve `None` quando os dados não puderam ser obtidos — repositório sem
+    commits, rate limit, token sem permissão. O analyzer de Git trata `None`
+    como "não avaliado" e registra a lacuna, em vez de assumir que está tudo bem.
+
+    A falha é engolida de propósito: a atividade é complementar, e perder a
+    análise inteira porque o GitHub recusou uma listagem seria desproporcional.
+    """
+    try:
+        branches, pulls, commits, contributors = await asyncio.gather(
+            list_branches(access_token, full_name, limit=30),
+            list_pull_requests(access_token, full_name, limit=30),
+            list_commits(access_token, full_name, limit=30),
+            list_contributors(access_token, full_name, limit=30),
+        )
+    except httpx.HTTPError as exc:
+        logger.warning("Atividade do Git indisponível para %s: %s", full_name, exc)
+        return None
+
+    return GitActivity(
+        default_branch=default_branch,
+        branches=[
+            BranchInfo(name=b["name"], protected=bool(b.get("protected", False)))
+            for b in branches
+            if b.get("name")
+        ],
+        recent_commits=[
+            CommitInfo(
+                message=c["commit"]["message"],
+                author=(c.get("author") or {}).get("login") or c["commit"]["author"].get("name"),
+            )
+            for c in commits
+            if c.get("commit")
+        ],
+        contributors=[c["login"] for c in contributors if c.get("login")],
+        merged_pull_requests=sum(1 for p in pulls if p.get("merged_at")),
+    )
