@@ -21,13 +21,19 @@ Todas as variáveis de ambiente ficam num único `.env` na raiz do projeto (lido
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | Credenciais do Postgres (usadas pelo container `postgres` e pela `DATABASE_URL`) |
 | `DATABASE_URL` | String de conexão async: `postgresql+asyncpg://user:pass@host:5432/db` |
 
-## Redis / Celery
+## Motor de análise
 
-| Variável | Descrição |
-|---|---|
-| `REDIS_URL` | Usado por outros componentes que falem com o Redis diretamente |
-| `CELERY_BROKER_URL` | Broker do Celery (fila de tasks) |
-| `CELERY_RESULT_BACKEND` | Backend de resultados do Celery |
+Todas têm padrão razoável — só mexa se souber por quê. Os limites existem porque o
+repositório analisado é dado de terceiros e pode ser hostil.
+
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `ENGINE_MAX_REPO_SIZE_KB` | `150000` | Porta barata antes do download, a partir do tamanho declarado pela API do GitHub. Advisório: esse número reflete o repositório git com todo o histórico, não a árvore de arquivos |
+| `ENGINE_MAX_ARCHIVE_BYTES` | — | Teto de bytes recebidos durante o download. O GitHub responde sem `Content-Length`, então a contagem é feita durante a transferência e aborta ao estourar |
+| `ENGINE_MAX_UNCOMPRESSED_BYTES` | `200 MB` | Teto do conteúdo descomprimido, contra bomba de descompressão |
+| `ENGINE_MAX_FILES` | `20000` | Teto de arquivos inventariados |
+| `ENGINE_MAX_FILE_BYTES` | `2 MB` | Arquivo acima disso não é lido. Continua inventariado: um binário enorme ou uma chave privada grande demais ainda são achados |
+| `ENGINE_MAX_ANALYSIS_SECONDS` | `120` | Timeout da análise. Impede que um repositório patológico segure o worker |
 
 ## Segurança
 

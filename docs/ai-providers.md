@@ -27,7 +27,7 @@ app/ai/factory.py
 
 `analysis_service.py` e as rotas que chamam IA recebem um `AIProvider` já
 instanciado (via `Depends(get_ai_provider)` nas rotas, ou chamando
-`get_ai_provider()` diretamente nas tasks do Celery) — nunca importam
+`get_optional_ai_provider()` diretamente na task de análise) — nunca importam
 `anthropic`, `openai` ou `google.generativeai` diretamente.
 
 ## Configuração (variáveis de ambiente)
