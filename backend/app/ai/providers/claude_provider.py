@@ -6,7 +6,9 @@ from app.ai.base import AIProvider
 class ClaudeProvider(AIProvider):
     name = "claude"
 
-    def __init__(self, api_key: str, model: str, base_url: str | None = None) -> None:
+    def __init__(self, api_key: str | None, model: str, base_url: str | None = None) -> None:
+        if not api_key:
+            raise ValueError("AI_API_KEY é obrigatório para AI_PROVIDER=claude.")
         self.model = model
         self._client = AsyncAnthropic(api_key=api_key, base_url=base_url)
 

@@ -6,7 +6,9 @@ from app.ai.base import AIProvider
 class GeminiProvider(AIProvider):
     name = "gemini"
 
-    def __init__(self, api_key: str, model: str, base_url: str | None = None) -> None:
+    def __init__(self, api_key: str | None, model: str, base_url: str | None = None) -> None:
+        if not api_key:
+            raise ValueError("AI_API_KEY é obrigatório para AI_PROVIDER=gemini.")
         # O SDK google-generativeai não expõe override de base_url (é a API
         # gerenciada do Google); o parâmetro é aceito só para manter a mesma
         # assinatura dos demais providers.
