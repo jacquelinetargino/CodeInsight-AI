@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -7,6 +8,15 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 from app.models.enums import AnalysisStatus, Dimension
+
+if TYPE_CHECKING:
+    # Só para o verificador de tipos: em execução o SQLAlchemy resolve
+    # os nomes ao configurar os mappers, e importar de verdade aqui
+    # criaria ciclo entre os módulos de modelo.
+    from app.models.fix_suggestion import FixSuggestion
+    from app.models.readme import GeneratedReadme
+    from app.models.repository import Repository
+    from app.models.suggestion import Suggestion
 
 
 class Analysis(Base):
@@ -30,17 +40,17 @@ class Analysis(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    repository: Mapped["Repository"] = relationship(back_populates="analyses")  # noqa: F821
+    repository: Mapped["Repository"] = relationship(back_populates="analyses")
     results: Mapped[list["AnalysisResult"]] = relationship(
         back_populates="analysis", cascade="all, delete-orphan"
     )
-    suggestions: Mapped[list["Suggestion"]] = relationship(  # noqa: F821
+    suggestions: Mapped[list["Suggestion"]] = relationship(
         back_populates="analysis", cascade="all, delete-orphan"
     )
-    fix_suggestions: Mapped[list["FixSuggestion"]] = relationship(  # noqa: F821
+    fix_suggestions: Mapped[list["FixSuggestion"]] = relationship(
         back_populates="analysis", cascade="all, delete-orphan"
     )
-    readme: Mapped["GeneratedReadme | None"] = relationship(  # noqa: F821
+    readme: Mapped["GeneratedReadme | None"] = relationship(
         back_populates="analysis", uselist=False, cascade="all, delete-orphan"
     )
 

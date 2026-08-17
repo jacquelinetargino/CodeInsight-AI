@@ -1,11 +1,18 @@
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    # Só para o verificador de tipos: em execução o SQLAlchemy resolve
+    # os nomes ao configurar os mappers, e importar de verdade aqui
+    # criaria ciclo entre os módulos de modelo.
+    from app.models.user import User
 
 
 class GithubCredential(Base):
@@ -27,4 +34,4 @@ class GithubCredential(Base):
     token_encrypted: Mapped[str] = mapped_column(String(2048), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    user: Mapped["User"] = relationship(back_populates="github_credential")  # noqa: F821
+    user: Mapped["User"] = relationship(back_populates="github_credential")

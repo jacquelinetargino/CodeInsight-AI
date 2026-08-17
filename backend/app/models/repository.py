@@ -1,11 +1,19 @@
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    # Só para o verificador de tipos: em execução o SQLAlchemy resolve
+    # os nomes ao configurar os mappers, e importar de verdade aqui
+    # criaria ciclo entre os módulos de modelo.
+    from app.models.analysis import Analysis
+    from app.models.user import User
 
 
 class Repository(Base):
@@ -23,8 +31,8 @@ class Repository(Base):
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    user: Mapped["User"] = relationship(back_populates="repositories")  # noqa: F821
-    analyses: Mapped[list["Analysis"]] = relationship(  # noqa: F821
+    user: Mapped["User"] = relationship(back_populates="repositories")
+    analyses: Mapped[list["Analysis"]] = relationship(
         back_populates="repository",
         cascade="all, delete-orphan",
         order_by="Analysis.created_at.desc()",

@@ -20,6 +20,21 @@ class AIProviderError(Exception):
 class AIProvider(ABC):
     name: str
 
+    def __init__(self, api_key: str | None, model: str, base_url: str | None = None) -> None:
+        """Todo provider é construído com as mesmas três variáveis de ambiente.
+
+        O contrato existia — `factory.get_ai_provider` já chamava
+        `provider_cls(api_key=..., model=..., base_url=...)` — mas não estava
+        declarado em lugar nenhum, então nada verificava se um provider novo o
+        respeitava.
+
+        `api_key` é opcional porque `AI_API_KEY` é opcional: servidores locais
+        (Ollama, LM Studio) aceitam qualquer valor e o que importa é o
+        `base_url`. Cada provider valida o que de fato precisa e falha com
+        mensagem própria, em vez de repassar `None` para o SDK.
+        """
+        raise NotImplementedError
+
     @abstractmethod
     async def generate_text(
         self, system_prompt: str, user_prompt: str, max_tokens: int = 4096
