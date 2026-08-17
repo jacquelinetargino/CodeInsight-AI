@@ -7,6 +7,49 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [0.3.2] — O relatório não afirma mais do que sabe
+
+Auditoria das afirmações que chegam ao usuário e do desempenho em repositório grande.
+
+### Corrigido
+
+- **TST-002 afirmava cobertura que o motor não mede.** A descrição dizia que a proporção
+  de arquivos de teste "indica cobertura desigual, com partes do sistema sem verificação".
+  A regra conta arquivos e não executa a suíte: poucos arquivos de teste podem exercitar
+  muita coisa, e muitos podem exercitar pouca. O texto passa a declarar o que de fato
+  observou. TST-005 foi mantida — ela menciona cobertura para dizer que **não** a mediu.
+- **`Path.resolve()` da raiz era recalculado a cada arquivo**, o que em `django/django`
+  eram 28 032 chamadas a `_getfinalpathname`, metade delas para o mesmo valor.
+
+### Adicionado
+
+- **`detection_method` em cada achado**: `ast`, `text` ou `metadata`. A confiança sozinha
+  não separava as coisas — `os.system()` confirmado pela árvore sintática saía com 0.85 e
+  um casamento de regex em JavaScript com 0.7, dois números que caíam no mesmo rótulo
+  ("detecção provável") e chegavam ao usuário como se fossem a mesma evidência. O motor
+  não tem parser de JavaScript, e um teste garante que nenhum achado de JS/TS saia
+  marcado como AST.
+- A tela mostra o método ("via busca textual"), com a ressalva completa no título.
+
+### Investigado e deliberadamente não feito
+
+`django/django` leva ~113s numa máquina Windows, e o profiler aponta 52% do tempo dentro
+de `_io.open`. Medido, o custo é o **primeiro toque** na árvore recém-extraída (6,5 ms por
+arquivo) e não a releitura (0,12 ms): a mesma análise sobre a árvore quente leva 26,4s.
+
+- Deduplicar as leituras entre analyzers economizaria menos de 2%.
+- Um pré-filtro por alternação no detector de credenciais saiu **mais lento** (78 ms
+  contra 65 ms).
+
+Ambos ficam registrados em `docs/architecture.md` e num módulo de teste, para que a
+investigação não precise ser repetida.
+
+### Compatibilidade
+
+`detection_method` é opcional em toda a cadeia. Análises gravadas antes dele continuam
+legíveis e recebem `metadata` na releitura — afirmar "AST" sobre um achado de origem
+desconhecida seria inventar procedência.
+
 ## [0.3.1] — Endurecimento pós-release
 
 Auditoria da 0.3.0 contra repositórios públicos reais. Nenhuma funcionalidade nova:
