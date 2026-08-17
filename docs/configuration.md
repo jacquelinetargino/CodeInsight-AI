@@ -32,7 +32,7 @@ repositório analisado é dado de terceiros e pode ser hostil.
 | `ENGINE_MAX_UNCOMPRESSED_BYTES` | `200 MB` | Teto do conteúdo descomprimido, contra bomba de descompressão |
 | `ENGINE_MAX_FILES` | `20000` | Teto de arquivos inventariados |
 | `ENGINE_MAX_FILE_BYTES` | `2 MB` | Arquivo acima disso não é lido. Continua inventariado: um binário enorme ou uma chave privada grande demais ainda são achados |
-| `ENGINE_MAX_ANALYSIS_SECONDS` | `300` | Timeout da análise. Medido: django/django (7008 arquivos) leva ~116s. A análise roda em thread, então esperar mais não bloqueia o event loop |
+| `ENGINE_MAX_ANALYSIS_SECONDS` | `300` | Timeout da análise. Medido: django/django (7008 arquivos) leva ~113s. A análise roda em thread, então esperar mais não bloqueia o event loop |
 
 ## Segurança
 
