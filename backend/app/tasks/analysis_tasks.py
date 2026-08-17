@@ -109,17 +109,18 @@ async def run_repository_analysis(analysis_id: uuid.UUID) -> None:
             analysis.status = AnalysisStatus.RUNNING
             await db.commit()
 
+            # O branch padrão vem da API, não do banco: o valor gravado é do
+            # momento em que o repositório foi cadastrado, e renomear o branch
+            # principal faria a análise pedir um ref que não existe mais.
             metadata = await github_service.get_repository(access_token, repository.full_name)
+            branch = metadata.get("default_branch") or repository.default_branch or "main"
+
             activity = await github_service.build_git_activity(
-                access_token, repository.full_name, repository.default_branch or "main"
+                access_token, repository.full_name, branch
             )
 
             report = await analyze_repository(
-                access_token,
-                repository.full_name,
-                repository.default_branch or "main",
-                declared_size_kb=metadata.get("size"),
-                activity=activity,
+                access_token, repository.full_name, branch, activity=activity
             )
 
             achados_por_dimensao = await _persist_report(db, analysis, report)

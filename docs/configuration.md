@@ -28,12 +28,11 @@ repositório analisado é dado de terceiros e pode ser hostil.
 
 | Variável | Padrão | Descrição |
 |---|---|---|
-| `ENGINE_MAX_REPO_SIZE_KB` | `150000` | Porta barata antes do download, a partir do tamanho declarado pela API do GitHub. Advisório: esse número reflete o repositório git com todo o histórico, não a árvore de arquivos |
 | `ENGINE_MAX_ARCHIVE_BYTES` | — | Teto de bytes recebidos durante o download. O GitHub responde sem `Content-Length`, então a contagem é feita durante a transferência e aborta ao estourar |
 | `ENGINE_MAX_UNCOMPRESSED_BYTES` | `200 MB` | Teto do conteúdo descomprimido, contra bomba de descompressão |
 | `ENGINE_MAX_FILES` | `20000` | Teto de arquivos inventariados |
 | `ENGINE_MAX_FILE_BYTES` | `2 MB` | Arquivo acima disso não é lido. Continua inventariado: um binário enorme ou uma chave privada grande demais ainda são achados |
-| `ENGINE_MAX_ANALYSIS_SECONDS` | `120` | Timeout da análise. Impede que um repositório patológico segure o worker |
+| `ENGINE_MAX_ANALYSIS_SECONDS` | `300` | Timeout da análise. Medido: django/django (7008 arquivos) leva ~116s. A análise roda em thread, então esperar mais não bloqueia o event loop |
 
 ## Segurança
 

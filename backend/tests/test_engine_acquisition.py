@@ -285,16 +285,41 @@ def _fake_download(tar_bytes: bytes):
     return download
 
 
-# --- porta advisória --------------------------------------------------------
+# --- o tamanho declarado pela API não é porta --------------------------------
 
 
-async def test_rejects_repo_over_declared_size(monkeypatch):
-    monkeypatch.setenv("ENGINE_MAX_REPO_SIZE_KB", "1000")
+async def test_tamanho_declarado_nao_recusa_repositorio(monkeypatch, tmp_path):
+    """Regressão: existiu uma porta baseada no `size` da GitHub API, e ela
+    recusava repositórios de 3 MB.
+
+    Medido: `pydantic/pydantic` declara 424 MB e entrega um tarball de 3,2 MB —
+    132× menos. A razão vai de 1,6× a 132× entre repositórios, então nenhum
+    limiar serve para os dois lados. `acquire_repository` não aceita mais esse
+    parâmetro; quem tentar reintroduzi-lo quebra este teste.
+    """
+    import inspect
+
+    assinatura = inspect.signature(acquire_repository)
+    assert "declared_size_kb" not in assinatura.parameters
+
+
+async def test_os_limites_reais_continuam_valendo():
+    """A proteção é a que conta bytes de verdade, e ela não foi tocada.
+
+    Cada limite abaixo tem teste próprio neste arquivo; esta asserção existe
+    para que remover um deles do config seja uma falha ruidosa, e não uma
+    ausência silenciosa.
+    """
     get_settings.cache_clear()
+    settings = get_settings()
 
-    with pytest.raises(RepositoryTooLargeError, match="acima do limite"):
-        async with acquire_repository(None, "o/r", "main", declared_size_kb=50_000):
-            pass
+    for nome in (
+        "engine_max_archive_bytes",
+        "engine_max_uncompressed_bytes",
+        "engine_max_files",
+        "engine_max_file_bytes",
+    ):
+        assert getattr(settings, nome) > 0, nome
 
 
 # --- T11: binários e encoding ----------------------------------------------

@@ -66,10 +66,6 @@ class Settings(BaseSettings):
     # de arquivos ou expandir mil vezes ao descomprimir. Cada limite abaixo cobre
     # um desses vetores e é ajustável por variável de ambiente.
 
-    # Porta barata antes de gastar banda: o campo `size` da GitHub API, em KB.
-    # É advisório — reflete o repositório git, não o tarball.
-    engine_max_repo_size_kb: int = 150_000
-
     # Teto real sobre os bytes baixados. Precisa ser contado durante o streaming
     # porque o GitHub responde com transfer-encoding chunked, sem Content-Length.
     engine_max_archive_bytes: int = 50 * 1024 * 1024
@@ -90,7 +86,15 @@ class Settings(BaseSettings):
     # são grandes e legitimamente inúteis para análise estática.
     engine_max_file_bytes: int = 2 * 1024 * 1024
 
-    engine_max_analysis_seconds: int = 120
+    # Teto de tempo da análise. Medido numa máquina de desenvolvimento:
+    # django/django (7008 arquivos) leva ~116s, fastapi/fastapi (3137) ~61s.
+    # Com 120s o maior deles ficava sem margem alguma, e um servidor mais lento
+    # o mataria no meio.
+    #
+    # A análise roda em thread (ver `pipeline.analyze_repository`), então esperar
+    # mais não bloqueia o event loop que atende as requisições — o custo de
+    # aumentar é uma thread ocupada por mais tempo, não indisponibilidade.
+    engine_max_analysis_seconds: int = 300
 
     @property
     def is_production(self) -> bool:

@@ -31,6 +31,11 @@ from app.models.enums import Severity
 
 MAX_SCORE = 100
 
+# Tamanho de repositório em que os pesos de severidade foram calibrados. Serve de
+# piso do denominador da densidade: até aqui a penalidade é por contagem
+# absoluta, e acima disso passa a ser por proporção. Ver `_penalty`.
+_BASELINE_FILES = 100
+
 
 class RiskLevel(str, Enum):
     """Risco agregado do repositório."""
@@ -112,19 +117,34 @@ class RepositoryScore(BaseModel):
         return None
 
 
-def _penalty(findings: list[Finding]) -> float:
+def _penalty(findings: list[Finding], files_analyzed: int) -> float:
     """Penalidade total de um conjunto de achados.
 
     A contagem entra pela raiz quadrada: dez achados médios pesam pouco mais que
-    três, o que evita que um repositório grande seja punido só por ser grande.
-    A confiança de cada achado escala a contagem — heurística incerta não
+    três. A confiança de cada achado escala a contagem — heurística incerta não
     derruba o score como uma certeza derrubaria.
+
+    **A penalidade é por densidade, não por contagem absoluta.** A raiz quadrada
+    sozinha não bastava: medido, `numpy/numpy` acumulava 1929 achados baixos em
+    2361 arquivos e saturava em zero, o mesmo veredito de um projeto de dez
+    arquivos com trinta problemas graves. Repositório grande tem mais achados
+    porque tem mais código, e um score que só sabe dizer "zero" para tudo acima
+    de mil arquivos não informa nada.
+
+    Abaixo de `_BASELINE_FILES` nada muda: a fórmula é idêntica à anterior, e é
+    a faixa em que os limiares de severidade foram calibrados. Acima, o que pesa
+    é a proporção — 0,4 achado por arquivo continua sendo 0,4 achado por arquivo,
+    tenha o repositório 200 ou 20 000 arquivos.
     """
+    # Denominador com piso: um repositório de cinco arquivos não deve ser punido
+    # pela raridade, nem premiado por ela.
+    escala = _BASELINE_FILES / max(files_analyzed, _BASELINE_FILES)
+
     total = 0.0
     for severidade, base in SEVERITY_PENALTY.items():
         efetivos = sum(f.confidence for f in findings if f.severity == severidade)
         if efetivos > 0:
-            total += base * math.sqrt(efetivos)
+            total += base * math.sqrt(efetivos * escala)
     return total
 
 
@@ -135,7 +155,7 @@ def score_dimension(result: AnalyzerResult) -> DimensionScore:
         chave = achado.severity.value
         contagem[chave] = contagem.get(chave, 0) + 1
 
-    bruto = MAX_SCORE - _penalty(result.findings)
+    bruto = MAX_SCORE - _penalty(result.findings, result.files_analyzed)
     return DimensionScore(
         category=result.category,
         score=max(0, round(bruto)),

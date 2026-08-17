@@ -70,7 +70,7 @@ nota na dimensão correspondente e as demais seguem.
 
 A análise é CPU-bound. Sem `asyncio.to_thread`, ela prenderia o event loop que atende as
 requisições — o backend inteiro ficaria sem resposta durante uma análise. O timeout
-(`ENGINE_MAX_ANALYSIS_SECONDS`, padrão 120s) impede que um repositório patológico segure
+(`ENGINE_MAX_ANALYSIS_SECONDS`, padrão 300s) impede que um repositório patológico segure
 o worker indefinidamente.
 
 ## Por que a análise roda em segundo plano
@@ -147,10 +147,14 @@ Cada dimensão parte de 100 e desconta uma penalidade calculada a partir dos ach
 Três decisões sustentam o cálculo:
 
 **Severidade domina quantidade.** Cada severidade tem um peso base (crítico 40, alto 15,
-médio 5, baixo 1.5) e a contagem entra pela raiz quadrada. O retorno decrescente evita
-que um repositório grande seja punido só por ser grande — o décimo aviso de estilo diz
-muito menos sobre o projeto do que o primeiro. A confiança de cada achado escala a
-contagem: heurística incerta não derruba o score como uma certeza derrubaria.
+médio 5, baixo 1.5) e a contagem entra pela raiz quadrada. A confiança de cada achado
+escala a contagem: heurística incerta não derruba o score como uma certeza derrubaria.
+
+**A penalidade é por densidade, não por contagem absoluta.** Acima de 100 arquivos, o que
+pesa é a proporção de achados por arquivo. Sem isso, todo repositório grande saturava em
+zero: medido, `numpy/numpy` acumulava 1929 achados baixos em 2361 arquivos e recebia o
+mesmo veredito de um projeto de dez arquivos com trinta problemas graves. Abaixo de 100
+arquivos nada muda — é a faixa em que os pesos de severidade foram calibrados.
 
 **Não avaliado nunca vira nota cheia.** Uma dimensão sem analyzer que a cubra recebe
 `None`, não 100, e é listada em `unevaluated_dimensions`. Os pesos são renormalizados
