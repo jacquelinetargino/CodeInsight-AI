@@ -104,6 +104,37 @@ que processar texto em busca de segredo exigia `DATABASE_URL` configurada.
 `tests/test_engine_independente.py` verifica os módulos de fato carregados, não as linhas
 de import: um acoplamento reintroduzido por qualquer caminho falha igual.
 
+### Onde o tempo de uma análise grande realmente vai
+
+`django/django` (7008 arquivos) leva ~113s numa máquina de desenvolvimento Windows. O
+profiler aponta 57s dentro de `_io.open` — 52% do total — e a leitura óbvia seria "cada
+analyzer relê os arquivos, deduplique as leituras". **Medido, essa leitura está errada.**
+
+Passadas sucessivas sobre a mesma árvore recém-extraída:
+
+| passada | tempo | por arquivo |
+|---|---|---|
+| 1ª (fria) | 34,5s | 6,508 ms |
+| 2ª (quente) | 0,6s | 0,120 ms |
+| 3ª (quente) | 0,6s | 0,110 ms |
+
+O custo é o **primeiro toque**, não a releitura. É comportamento do sistema de arquivos e
+do antivírus sobre arquivos recém-gravados — não desperdício do programa. A mesma análise
+sobre a árvore já quente leva **26,4s**, contra 113s na primeira vez.
+
+Consequências práticas:
+
+- Deduplicar as releituras economizaria ~1,2s de 113s, menos de 2%. Não foi feito.
+- Um pré-filtro por alternação no detector de credenciais foi medido e saiu **mais lento**
+  (78 ms contra 65 ms): 16 padrões numa alternação custam mais para avaliar do que
+  curto-circuitar por eles. Não foi feito.
+- O que restou de desperdício real era `Path.resolve()` da raiz sendo recalculado por
+  arquivo, e isso sim foi corrigido.
+
+O número de 113s é de uma máquina Windows com o repositório recém-extraído. **Não medi em
+Linux**, que é onde o serviço roda; o teto de `ENGINE_MAX_ANALYSIS_SECONDS` cobre o pior
+caso observado com folga.
+
 ### Por que a AST é memoizada
 
 Segurança e qualidade consomem o mesmo relatório de cada arquivo Python — um traduz as
