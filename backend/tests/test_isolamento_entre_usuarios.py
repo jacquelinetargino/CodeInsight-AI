@@ -277,3 +277,74 @@ async def test_dashboard_do_dono_conta_os_dados_dele(
     assert resumo["total_analyses"] == 1
     assert resumo["average_score"] == 80.0
     assert len(resumo["recent_history"]) == 1
+
+
+# --- nenhuma rota de negócio pode ser pública --------------------------------
+
+
+def test_toda_rota_de_negocio_exige_autenticacao():
+    """`SECURITY.md`: "JWT assinado, validado em toda rota protegida".
+
+    Uma rota nova sem `Depends(get_current_user)` fica pública em silêncio —
+    nenhum teste existente notaria, porque testes de rota autenticam por
+    hábito e nunca perguntam o que acontece sem token.
+
+    A lista abaixo é de exceções deliberadas. Acrescentar algo a ela é uma
+    decisão explícita, que aparece no diff.
+    """
+    import inspect
+
+    from app.api.deps import get_current_user
+    from app.main import app
+
+    PUBLICAS = {
+        # Documentação e sonda de saúde.
+        "/openapi.json",
+        "/docs",
+        "/docs/oauth2-redirect",
+        "/redoc",
+        "/health",
+        # O usuário ainda não tem token nestas.
+        f"{PREFIX}/auth/register",
+        f"{PREFIX}/auth/login",
+        # Logout é do lado do cliente: o token é stateless e o servidor não
+        # guarda blocklist. Exigir token aqui não protegeria nada.
+        f"{PREFIX}/auth/logout",
+    }
+
+    desprotegidas = set()
+    for rota in app.routes:
+        caminho = getattr(rota, "path", "")
+        endpoint = getattr(rota, "endpoint", None)
+        metodos = getattr(rota, "methods", set()) - {"HEAD", "OPTIONS"}
+        if not metodos or endpoint is None or caminho in PUBLICAS:
+            continue
+        try:
+            parametros = inspect.signature(endpoint).parameters.values()
+        except (TypeError, ValueError):  # pragma: no cover
+            continue
+        if not any(getattr(p.default, "dependency", None) is get_current_user for p in parametros):
+            desprotegidas.add((sorted(metodos)[0], caminho))
+
+    assert not desprotegidas, (
+        f"rotas sem autenticação: {sorted(desprotegidas)}. Ou acrescente "
+        "`Depends(get_current_user)`, ou declare a exceção na lista PUBLICAS."
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "metodo,caminho",
+    [
+        ("get", "/auth/me"),
+        ("get", "/repos"),
+        ("get", "/analysis"),
+        ("get", "/dashboard/summary"),
+        ("get", "/settings/github-token"),
+    ],
+)
+async def test_sem_token_a_rota_recusa(client: AsyncClient, metodo, caminho):
+    """A trava acima é estrutural — lê assinaturas. Esta verifica o efeito de
+    verdade, numa amostra: sem cabeçalho de autorização, a resposta é 401."""
+    resposta = await getattr(client, metodo)(f"{PREFIX}{caminho}")
+    assert resposta.status_code == 401
