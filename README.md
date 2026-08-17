@@ -10,7 +10,7 @@
 
 [![CI](https://github.com/jacquelinetargino/CodeInsight-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/jacquelinetargino/CodeInsight-AI/actions/workflows/ci.yml)
 [![Tests](https://github.com/jacquelinetargino/CodeInsight-AI/actions/workflows/tests.yml/badge.svg)](https://github.com/jacquelinetargino/CodeInsight-AI/actions/workflows/tests.yml)
-[![Version](https://img.shields.io/badge/version-0.3.2-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.3-blue)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Top language](https://img.shields.io/github/languages/top/jacquelinetargino/CodeInsight-AI)](https://github.com/jacquelinetargino/CodeInsight-AI)
 

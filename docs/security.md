@@ -56,6 +56,15 @@ necessário, já que a autenticação não usa cookies.
 os dois endpoints que disparam chamadas custosas (e potencialmente caras) ao provedor
 de IA.
 
+O limitador usa `key_style="endpoint"`. O padrão do `slowapi` é `"url"`, que põe o
+**caminho concreto** no balde: numa rota com id variável isso dá um orçamento inteiro por
+recurso. Medido antes da correção, 23 chamadas a `/fix` com ids diferentes não disparavam
+o limite de 20.
+
+**A contagem vive na memória do processo.** Com mais de uma instância, cada uma tem seu
+próprio balde e o limite efetivo é multiplicado pelo número de réplicas. Corrigir exigiria
+armazenamento compartilhado.
+
 ## Validação de entrada
 
 Todo body de request é validado via Pydantic antes de chegar à lógica de negócio.
