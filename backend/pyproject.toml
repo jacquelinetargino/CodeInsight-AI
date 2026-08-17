@@ -70,3 +70,6 @@ testpaths = ["tests"]
 [tool.mypy]
 python_version = "3.12"
 ignore_missing_imports = true
+# O plugin do pydantic entende que `Settings()` é preenchido pelo ambiente, e
+# não uma chamada faltando três argumentos obrigatórios.
+plugins = ["pydantic.mypy"]

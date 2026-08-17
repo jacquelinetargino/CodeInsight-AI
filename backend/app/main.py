@@ -12,7 +12,12 @@ settings = get_settings()
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# O handler do slowapi recebe `RateLimitExceeded`; o Starlette tipa o parâmetro
+# como `Exception`. É incompatibilidade entre as duas bibliotecas, não erro
+# nosso: o Starlette só chama este handler para a exceção registrada ao lado.
+# O ignore é pontual de propósito — desligar `arg-type` no arquivo esconderia
+# erro de verdade.
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 app.add_middleware(
     CORSMiddleware,
