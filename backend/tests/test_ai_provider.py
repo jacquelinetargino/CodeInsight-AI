@@ -188,3 +188,46 @@ def test_get_ai_provider_raises_when_unconfigured(monkeypatch):
     monkeypatch.delenv("AI_API_KEY", raising=False)
     with pytest.raises(AIProviderNotConfiguredError):
         get_ai_provider()
+
+
+# --- o contrato de construção dos providers ---------------------------------
+
+
+def test_todo_provider_aceita_a_mesma_assinatura():
+    """A factory constrói qualquer provider com `(api_key, model, base_url)`.
+
+    O contrato existia e não estava declarado em lugar nenhum — nada verificava
+    se um provider novo o respeitava. Agora está em `AIProvider.__init__`, e
+    este teste confirma que os concretos o seguem.
+    """
+    import inspect
+
+    from app.ai.base import AIProvider
+    from app.ai.factory import _PROVIDERS
+
+    esperado = list(inspect.signature(AIProvider.__init__).parameters)
+
+    for nome, classe in _PROVIDERS.items():
+        assinatura = list(inspect.signature(classe.__init__).parameters)
+        assert assinatura == esperado, f"{nome}: {assinatura} != {esperado}"
+
+
+@pytest.mark.parametrize("provider", ["claude", "openai", "gemini"])
+def test_provider_sem_chave_falha_com_mensagem_propria(provider):
+    """Sem chave, o erro precisa dizer qual variável falta — antes o `None` ia
+    para dentro do SDK e voltava como erro obscuro dele."""
+    from app.ai.factory import _PROVIDERS
+
+    with pytest.raises(ValueError, match="AI_API_KEY"):
+        _PROVIDERS[provider](api_key=None, model="qualquer", base_url=None)
+
+
+def test_provider_local_nao_exige_chave_mas_exige_endpoint():
+    """Servidor local aceita qualquer chave; o que importa é o endpoint."""
+    from app.ai.factory import _PROVIDERS
+
+    with pytest.raises(ValueError, match="AI_BASE_URL"):
+        _PROVIDERS["local"](api_key=None, model="llama", base_url=None)
+
+    # Com endpoint, constrói sem chave.
+    assert _PROVIDERS["local"](api_key=None, model="llama", base_url="http://localhost:11434/v1")

@@ -55,7 +55,6 @@ jobs:
 
       - name: Type check (mypy)
         run: mypy app
-        continue-on-error: true # tipagem de bibliotecas de terceiros ainda não é 100% coberta
 
       - name: Validate migrations (alembic upgrade head)
         run: alembic upgrade head
