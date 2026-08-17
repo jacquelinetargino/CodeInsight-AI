@@ -49,6 +49,26 @@ existem separados de propósito: o motor não deve depender da camada de persist
 Divergirem seria um bug silencioso — achados de uma categoria sem coluna correspondente
 não seriam gravados — então `tests/test_engine_scoring.py` falha se saírem de sincronia.
 
+### Por que não existe limite pelo tamanho declarado pelo GitHub
+
+O campo `size` da API é o repositório git **com todo o histórico**, e não guarda relação
+utilizável com o que chega ao disco:
+
+| repositório | `size` da API | tarball | descomprimido |
+|---|---|---|---|
+| `pydantic/pydantic` | 424 MB | 3,2 MB | 10,7 MB |
+| `django/django` | 275 MB | 10,5 MB | 44,6 MB |
+| `fastapi/fastapi` | 52 MB | 16,9 MB | 33,1 MB |
+| `psf/requests` | 13 MB | 3,2 MB | 4,2 MB |
+
+A razão vai de 1,6× a 132×. Um limiar baixo o bastante para proteger recusa um
+repositório de 3 MB; um alto o bastante para não recusar nenhum não protege de nada.
+Houve uma porta assim, e ela só produzia falsa recusa.
+
+A proteção é a que conta bytes de verdade: contagem durante o streaming
+(`ENGINE_MAX_ARCHIVE_BYTES`), orçamento descomprimido, teto de arquivos, teto por arquivo
+e reconferência pós-extração. Cada uma tem teste próprio.
+
 ### Por que o repositório analisado nunca é executado
 
 Todo repositório vindo de terceiros é tratado como hostil. Não há `subprocess`, `shell`,
@@ -72,6 +92,27 @@ A análise é CPU-bound. Sem `asyncio.to_thread`, ela prenderia o event loop que
 requisições — o backend inteiro ficaria sem resposta durante uma análise. O timeout
 (`ENGINE_MAX_ANALYSIS_SECONDS`, padrão 300s) impede que um repositório patológico segure
 o worker indefinidamente.
+
+### Por que o motor não importa nada de `app.models`
+
+Os enums de domínio vivem em `app/enums.py`, que importa só `enum`. Estavam em
+`app/models/enums.py`, e importar qualquer submódulo de `app.models` dispara o `__init__`
+do pacote, que carrega os modelos SQLAlchemy e com eles `get_settings()` — o resultado era
+que processar texto em busca de segredo exigia `DATABASE_URL` configurada.
+
+`app.models.enums` continua existindo como reexportação.
+`tests/test_engine_independente.py` verifica os módulos de fato carregados, não as linhas
+de import: um acoplamento reintroduzido por qualquer caminho falha igual.
+
+### Por que a AST é memoizada
+
+Segurança e qualidade consomem o mesmo relatório de cada arquivo Python — um traduz as
+ocorrências de risco, o outro as de manutenibilidade. Cada um chamava `analyze_python` por
+conta própria: medido, 248 chamadas para 124 arquivos, 44% do tempo da análise.
+
+O relatório é memoizado pelo digest do conteúdo, com teto de entradas. A chave é o digest
+e não o texto porque guardar o fonte custaria dezenas de MB justamente nos repositórios
+grandes, onde o cache importa.
 
 ## Por que a análise roda em segundo plano
 

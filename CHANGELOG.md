@@ -7,6 +7,64 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [0.3.1] — Endurecimento pós-release
+
+Auditoria da 0.3.0 contra repositórios públicos reais. Nenhuma funcionalidade nova:
+o que mudou foi o produto parar de errar em casos que só aparecem fora do laboratório.
+
+### Corrigido
+
+- **O limite de tamanho recusava repositórios analisáveis.** A porta usava o campo `size`
+  da GitHub API, que é o repositório git com todo o histórico. Medido: `pydantic/pydantic`
+  declara 424 MB e entrega um tarball de 3,2 MB — 132× menos. A razão vai de 1,6× a 132×
+  entre repositórios, então nenhum limiar serve para os dois lados. A porta foi removida;
+  as cinco proteções que contam bytes de verdade continuam inteiras, cada uma com teste.
+- **O score saturava em zero em qualquer repositório grande.** `numpy/numpy` acumulava
+  1929 achados baixos em 2361 arquivos e recebia nota zero — o mesmo veredito de um
+  projeto de dez arquivos com trinta problemas graves. Todo repositório grande saía como
+  risco crítico. A penalidade passou a ser por densidade acima de 100 arquivos; abaixo
+  disso a fórmula é idêntica. Depois: pydantic 45,7 → 70,5, fastapi 52,6 → 87,0.
+- **O timeout não tinha margem.** `django/django` leva ~113s contra um teto de 120s. Novo
+  padrão: 300s. A análise roda em thread, então esperar mais não bloqueia o event loop.
+- **Três reprovações de contraste no tema escuro** — `destructive` 3,53:1, `primary`
+  4,30:1 e a borda de campo de formulário 1,43:1, contra mínimos de 4,5:1 e 3:1. A borda
+  reprovava também no tema claro, com 1,27:1.
+- **Repositório removido entre o enfileiramento e a execução** produzia erro de
+  `NoneType` em vez de mensagem útil.
+- O branch padrão passa a vir da API, não do banco: o valor gravado é do momento do
+  cadastro, e renomear o branch principal fazia a análise pedir um ref inexistente.
+
+### Adicionado
+
+- **Modo escuro funcional.** A infraestrutura já existia — `darkMode: ["class"]` e um
+  bloco `.dark` completo — e nada aplicava a classe. São três estados (claro, escuro,
+  sistema), com o tema aplicado antes da primeira pintura para não haver lampejo branco.
+- **Auditoria de contraste como teste**: lê os tokens do `index.css` e aplica a fórmula
+  da WCAG nos dois temas, incluindo os pares preenchimento/texto e a presença de cada
+  token em ambos.
+
+### Alterado
+
+- **A credencial do Postgres do CI foi removida, não isentada.** O detector acusava
+  `codeinsight:codeinsight@localhost` e estava certo. O container é efêmero e alcançável
+  só pelo localhost do runner, então `POSTGRES_HOST_AUTH_METHOD=trust` elimina o segredo.
+  Nenhuma exceção foi criada no detector: uma isenção por "host local" ou "arquivo de CI"
+  abriria caminho para segredo real passar.
+- **O motor deixou de depender da camada de persistência.** Importar o detector de
+  credenciais exigia `DATABASE_URL`, `JWT_SECRET` e `ENCRYPTION_KEY` — processar texto
+  pedia um Postgres. Os enums passaram para `app/enums.py`; `app.models.enums` continua
+  funcionando como reexportação.
+- **Cada arquivo Python é parseado uma vez, não duas.** Segurança e qualidade consomem o
+  mesmo relatório da AST e cada um o calculava: 248 chamadas para 124 arquivos, 44% do
+  tempo. Ganho de 20% onde Python domina; 3% em `django/django`, cujo custo está em outro
+  lugar e segue por investigar.
+
+### Removido
+
+- Serviço Redis, variáveis `CELERY_*` e instalação das bibliotecas do WeasyPrint no CI,
+  herdados da migração para BackgroundTasks e xhtml2pdf (MIG-007). Verificado antes de
+  remover: nenhuma referência no código, nas dependências, no Docker ou nos testes.
+
 ## [0.3.0] — O CodeInsight Engine assume a análise
 
 A mudança central desta versão: **analisar um repositório não exige mais chave de API,
