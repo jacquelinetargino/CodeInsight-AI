@@ -7,6 +7,53 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [0.3.3] — Garantias de segurança viram teste
+
+Auditoria das promessas de `SECURITY.md` contra o que o código realmente garante.
+Cada uma foi verificada por **mutação**: quebrar a proteção de propósito e confirmar
+que a suíte acusa. Duas passavam despercebidas.
+
+### Corrigido
+
+- **O limite de taxa de `POST /analysis/{id}/fix` valia por análise, não por IP.** O
+  `slowapi` usa `key_style="url"` por padrão, o que põe o caminho concreto no balde do
+  limite — e a rota tem um id variável. Medido: 23 chamadas com ids diferentes, nenhum
+  429, contra um limite anunciado de 20 por minuto. Quem tivesse dez análises fazia
+  duzentas chamadas de IA por minuto, justamente as caras. `POST /analysis` não sofria
+  disso porque o caminho é fixo, e foi por isso que passou despercebido.
+- **`default_limits=["120/minute"]` nunca se aplicou.** O `slowapi` só impõe limite
+  padrão pelo `SlowAPIMiddleware`, que a aplicação não registra: 130 chamadas seguidas a
+  uma rota sem decorador responderam 200. Removido — configuração que promete o que não
+  acontece é pior do que nenhuma.
+- **`mypy` não reprovava nada.** Rodava com `continue-on-error: true`, então erro de tipo
+  novo entraria sem ninguém notar. Os 19 erros do baseline foram a zero e o check passou
+  a gatilhar.
+- **O contrato de construção dos providers de IA não estava declarado.** A factory já
+  chamava `provider_cls(api_key=..., model=..., base_url=...)`, mas nada verificava se um
+  provider novo o respeitava. Declará-lo expôs que `ai_api_key` é `str | None` e ia para
+  providers que declaravam `str`.
+
+### Adicionado
+
+- **Isolamento entre usuários, verificado.** As rotas verificam posse em sete pontos e
+  nenhum teste garantia isso: trocar `get_owned_detail(id, user_id)` por `get(id)` num
+  refactor deixaria os 709 testes passando. Inclui os agregados do dashboard, onde
+  remover o filtro de dono mantinha as consultas válidas — só passavam a somar o de todo
+  mundo.
+- **O PAT é criptografado em repouso, verificado.** Três documentos prometiam; nada
+  checava. Trocando `encrypt_secret(payload.token)` por `payload.token`, os 723 testes
+  continuavam verdes e o token ia legível para o banco.
+- **Nenhuma rota de negócio fica pública.** Uma rota nova sem `Depends(get_current_user)`
+  agora quebra o build em vez de entrar em silêncio.
+- **Os limites de taxa são exercitados** — disparam na chamada certa, e uso normal não é
+  barrado.
+
+### Limitação registrada
+
+O limitador guarda contagem **em memória do processo**. Com mais de uma instância, cada
+uma tem seu balde e o limite efetivo é multiplicado pelo número de réplicas. Corrigir
+exigiria armazenamento compartilhado, e reintroduzir Redis foi descartado como dívida.
+
 ## [0.3.2] — O relatório não afirma mais do que sabe
 
 Auditoria das afirmações que chegam ao usuário e do desempenho em repositório grande.
