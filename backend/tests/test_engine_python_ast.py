@@ -356,3 +356,57 @@ def Path_read(caminho: str) -> str:
     from pathlib import Path
 
     return Path(caminho).read_text(encoding="utf-8")
+
+
+# --- memoização --------------------------------------------------------------
+
+
+def test_mesmo_conteudo_devolve_o_mesmo_relatorio():
+    """Dois analyzers consomem este relatório; calcular duas vezes era 44% do
+    tempo total da análise, medido por profiler."""
+    from app.engine.rules.python_ast import analyze_python, clear_analysis_cache
+
+    clear_analysis_cache()
+    fonte = "def f(x=[]):\n    return x\n"
+    assert analyze_python(fonte) is analyze_python(fonte)
+
+
+def test_conteudos_diferentes_nao_se_confundem():
+    """A chave é o digest do conteúdo — a trava contra o erro que um cache mal
+    indexado produziria: o relatório de um arquivo aparecer em outro."""
+    from app.engine.rules.python_ast import analyze_python, clear_analysis_cache
+
+    clear_analysis_cache()
+    um = analyze_python("def f(x=[]):\n    return x\n")
+    outro = analyze_python("def g(a, b):\n    return a + b\n")
+
+    assert um is not outro
+    assert {i.kind for i in um.issues} != {i.kind for i in outro.issues}
+
+
+def test_arquivo_invalido_tambem_e_memoizado():
+    """Sintaxe inválida é comum em repositório de terceiros e o resultado é tão
+    reaproveitável quanto o de um arquivo válido."""
+    from app.engine.rules.python_ast import analyze_python, clear_analysis_cache
+
+    clear_analysis_cache()
+    primeiro = analyze_python("def f(\n")
+    assert primeiro.parse_error
+    assert analyze_python("def f(\n") is primeiro
+
+
+def test_o_cache_tem_teto():
+    """Sem teto, analisar repositórios grandes em sequência faria o processo
+    crescer sem limite."""
+    from app.engine.rules import python_ast
+
+    python_ast.clear_analysis_cache()
+    original = python_ast._CACHE_MAX_ENTRIES
+    python_ast._CACHE_MAX_ENTRIES = 3
+    try:
+        for i in range(10):
+            python_ast.analyze_python(f"x = {i}\n")
+        assert len(python_ast._CACHE) <= 4
+    finally:
+        python_ast._CACHE_MAX_ENTRIES = original
+        python_ast.clear_analysis_cache()
