@@ -8,7 +8,7 @@ independentemente de quem o detectou.
 
 from pydantic import BaseModel, Field
 
-from app.engine.findings import Finding, FindingCategory, build_finding_id
+from app.engine.findings import DetectionMethod, Finding, FindingCategory, build_finding_id
 from app.enums import Severity
 
 
@@ -47,6 +47,7 @@ class Rule(BaseModel):
         description: str | None = None,
         confidence: float | None = None,
         severity: Severity | None = None,
+        detection_method: DetectionMethod = DetectionMethod.METADATA,
     ) -> Finding:
         """Cria um achado herdando categoria, severidade e recomendação da regra.
 
@@ -75,6 +76,7 @@ class Rule(BaseModel):
             evidence=evidence,
             recommendation=self.recommendation,
             confidence=self.confidence if confidence is None else confidence,
+            detection_method=detection_method,
             analyzer=analyzer,
         )
 
