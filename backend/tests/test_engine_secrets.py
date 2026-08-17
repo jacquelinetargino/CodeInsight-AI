@@ -264,3 +264,33 @@ def test_credencial_de_verdade_continua_sendo_detectada():
     achados = detect_secrets("DATABASE_URL=postgresql://admin:R7pQ2xL9vNm4@prod.exemplo.com/app")
     assert achados
     assert "R7pQ2xL9vNm4" not in achados[0].masked_evidence
+
+
+# --- dogfooding: os arquivos versionados deste projeto -----------------------
+
+
+def test_os_workflows_nao_contem_credencial():
+    """Os arquivos de CI passam pelo próprio detector.
+
+    O Postgres do CI já teve senha fixa (`codeinsight:codeinsight`). A correção
+    foi **remover a credencial**, com `POSTGRES_HOST_AUTH_METHOD: trust` — não
+    criar exceção no detector. Um container efêmero, alcançável só pelo
+    localhost do runner, não precisa de senha, e uma exceção por "é localhost"
+    ou "é arquivo de CI" abriria caminho para segredo real passar.
+    """
+    from pathlib import Path
+
+    raiz = Path(__file__).resolve().parent.parent.parent / ".github" / "workflows"
+    for workflow in sorted(raiz.glob("*.yml")):
+        achados = detect_secrets(workflow.read_text(encoding="utf-8"))
+        assert achados == [], f"{workflow.name}: {[a.masked_evidence for a in achados]}"
+
+
+def test_credencial_em_localhost_continua_sendo_detectada():
+    """A trava da decisão acima: não existe isenção por host local.
+
+    Se alguém adicionar uma senha fixa a um serviço local em qualquer arquivo
+    versionado, o detector precisa acusar.
+    """
+    achados = detect_secrets("DATABASE_URL=postgresql://admin:R7pQ2xL9vNm4@localhost:5432/app")
+    assert achados

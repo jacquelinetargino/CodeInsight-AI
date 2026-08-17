@@ -14,8 +14,9 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: codeinsight
-          POSTGRES_PASSWORD: codeinsight
           POSTGRES_DB: codeinsight_ci
+          # Sem senha: ver o comentário equivalente em tests.yml.
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U codeinsight"
@@ -28,7 +29,7 @@ jobs:
         working-directory: backend
 
     env:
-      DATABASE_URL: postgresql+asyncpg://codeinsight:codeinsight@localhost:5432/codeinsight_ci
+      DATABASE_URL: postgresql+asyncpg://codeinsight@localhost:5432/codeinsight_ci
       JWT_SECRET: ci-lint-secret
       ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
       # Nenhuma variável de IA aqui, de propósito: o CI só passa se a aplicação
