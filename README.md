@@ -10,7 +10,7 @@
 
 [![CI](https://github.com/jacquelinetargino/CodeInsight-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/jacquelinetargino/CodeInsight-AI/actions/workflows/ci.yml)
 [![Tests](https://github.com/jacquelinetargino/CodeInsight-AI/actions/workflows/tests.yml/badge.svg)](https://github.com/jacquelinetargino/CodeInsight-AI/actions/workflows/tests.yml)
-[![Version](https://img.shields.io/badge/version-0.3.1-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.2-blue)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Top language](https://img.shields.io/github/languages/top/jacquelinetargino/CodeInsight-AI)](https://github.com/jacquelinetargino/CodeInsight-AI)
 
@@ -87,7 +87,7 @@ Nunca coloque credenciais reais no README, em issues, ou em qualquer arquivo ver
 - **Integração com GitHub sem OAuth**: analise qualquer repositório público só com `owner/repo` ou a URL; conecte opcionalmente um Personal Access Token para repositórios privados e listagem automática dos seus repositórios
 - **Dados ricos do repositório**: nome, descrição, linguagens, branches, commits, issues, pull requests, contribuidores e estrutura de arquivos
 - **Análise estática em 8 dimensões**, sem IA: segurança, qualidade, dependências, arquitetura, testes, configuração, documentação e git
-- **Achados rastreáveis**: cada um traz identificador de regra, severidade, arquivo, linha, evidência e **confiança** — boa parte da análise é heurística, e a dúvida é declarada em vez de escondida
+- **Achados rastreáveis**: cada um traz identificador de regra, severidade, arquivo, linha, evidência, **confiança** e o **método de detecção** — árvore sintática, busca textual ou metadados. Boa parte da análise é heurística, e a dúvida é declarada em vez de escondida
 - **Score e nível de risco**: 0 a 100 por dimensão e um veredito agregado. Dimensão não avaliada recebe "não avaliado", nunca nota cheia
 - **Tema claro, escuro ou automático**, acompanhando a preferência do sistema
 - **Histórico completo** de todas as análises por repositório
