@@ -104,7 +104,6 @@ async def analyze_repository(
     full_name: str,
     ref: str,
     *,
-    declared_size_kb: int | None = None,
     activity: GitActivity | None = None,
 ) -> EngineReport:
     """Baixa, extrai e analisa um repositório do GitHub.
@@ -114,9 +113,7 @@ async def analyze_repository(
     """
     settings = get_settings()
 
-    async with acquire_repository(
-        access_token, full_name, ref, declared_size_kb=declared_size_kb
-    ) as root:
+    async with acquire_repository(access_token, full_name, ref) as root:
         try:
             # A análise é CPU-bound e roda em thread para não travar o event
             # loop: o backend continua servindo requisições enquanto isso.

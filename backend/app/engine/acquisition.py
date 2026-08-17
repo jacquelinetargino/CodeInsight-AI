@@ -269,23 +269,31 @@ async def acquire_repository(
     access_token: str | None,
     full_name: str,
     ref: str,
-    *,
-    declared_size_kb: int | None = None,
 ) -> AsyncIterator[Path]:
     """Entrega o repositório extraído num diretório temporário, removido ao sair
     do bloco — em sucesso, em exceção e em cancelamento.
 
-    `declared_size_kb` é o campo `size` da GitHub API, usado como porta barata
-    antes de gastar banda. É advisório: reflete o repositório git, não o tarball.
+    **Não existe porta baseada no tamanho declarado pela GitHub API.** Houve uma,
+    e ela recusava repositórios perfeitamente analisáveis. O campo `size` da API
+    é o repositório git com todo o histórico e não guarda relação utilizável com
+    o que chega ao disco — medido:
+
+        repositório          size da API    tarball    descomprimido
+        pydantic/pydantic         424 MB     3,2 MB          10,7 MB
+        django/django             275 MB    10,5 MB          44,6 MB
+        numpy/numpy               178 MB     9,4 MB          35,8 MB
+        fastapi/fastapi            52 MB    16,9 MB          33,1 MB
+        psf/requests               13 MB     3,2 MB           4,2 MB
+
+    A razão vai de 1,6× a 132×. Qualquer limiar baixo o bastante para servir de
+    proteção recusa um repositório de 3 MB; qualquer limiar alto o bastante para
+    não recusar nenhum é grande demais para proteger de coisa alguma.
+
+    A proteção real é a que conta bytes de verdade, e ela continua inteira:
+    `_download_archive` aborta ao estourar `engine_max_archive_bytes` durante o
+    streaming, `_vet_members` recusa o orçamento descomprimido e a contagem de
+    arquivos, e `_assert_size_budget` reconfere o que foi gravado.
     """
-    settings = get_settings()
-
-    if declared_size_kb is not None and declared_size_kb > settings.engine_max_repo_size_kb:
-        raise RepositoryTooLargeError(
-            f"O repositório tem cerca de {declared_size_kb // 1024} MB, acima do limite "
-            f"de {settings.engine_max_repo_size_kb // 1024} MB."
-        )
-
     # mkdtemp: permissões 0700 e caminho imprevisível. Arquivo e extração vivem
     # os dois aqui dentro, então a limpeza é uma remoção de raiz só.
     workdir = Path(tempfile.mkdtemp(prefix="codeinsight-"))
