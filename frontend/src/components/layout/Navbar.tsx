@@ -2,6 +2,7 @@ import { Settings, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 
 export function Navbar() {
@@ -16,35 +17,38 @@ export function Navbar() {
             <Sparkles className="h-4 w-4" />
           </span>
           <span className="text-lg">
-            CodeInsight <span className="text-primary">AI</span>
+            CodeInsight <span className="text-primary-text">AI</span>
           </span>
         </Link>
 
-        {user && (
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => navigate("/settings")}
-              className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
-              <Settings className="h-3.5 w-3.5" /> Configurações
-            </button>
-            <div className="flex items-center gap-2 rounded-full border border-border py-1 pl-1 pr-3">
-              <Avatar className="h-7 w-7">
-                <AvatarFallback>{user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <span className="text-sm font-medium">{user.username}</span>
-            </div>
-            <Button variant="ghost" size="sm" onClick={logout}>
-              Sair
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          {user && (
+            <>
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => navigate("/settings")}
+                className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                <Settings className="h-3.5 w-3.5" /> Configurações
+              </button>
+              <div className="flex items-center gap-2 rounded-full border border-border py-1 pl-1 pr-3">
+                <Avatar className="h-7 w-7">
+                  <AvatarFallback>{user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium">{user.username}</span>
+              </div>
+              <Button variant="ghost" size="sm" onClick={logout}>
+                Sair
+              </Button>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );
