@@ -39,9 +39,12 @@ TESTING_RULES: list[Rule] = [
         "TST-002",
         "Proporção baixa de testes",
         "medium",
-        "Existem testes, mas em número pequeno em relação ao código-fonte. Isso indica "
-        "cobertura desigual, com partes do sistema sem verificação.",
-        "Priorize testar os módulos com mais lógica de decisão.",
+        "Há poucos arquivos de teste em relação aos de código-fonte. É uma razão entre "
+        "contagens de arquivo, não uma medida de cobertura: poucos arquivos de teste "
+        "podem exercitar muita coisa, e muitos podem exercitar pouca. O sinal é de "
+        "desproporção, e vale olhar o que ficou sem teste — não uma conclusão sobre o "
+        "que o código verifica.",
+        "Meça a cobertura de fato e priorize os módulos com mais lógica de decisão.",
         0.6,
     ),
     _rule(
