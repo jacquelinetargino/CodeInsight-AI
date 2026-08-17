@@ -211,3 +211,80 @@ def test_scores_sao_deterministicos():
         result(FindingCategory.QUALITY, [make_finding(Severity.MEDIUM, FindingCategory.QUALITY)]),
     ]
     assert score_repository(resultados) == score_repository(resultados)
+
+
+# --- o score precisa ser invariante à escala ---------------------------------
+
+
+def _com_arquivos(categoria, achados, files_analyzed):
+    return AnalyzerResult(
+        analyzer=categoria.value,
+        category=categoria,
+        findings=achados,
+        files_analyzed=files_analyzed,
+    )
+
+
+def test_mesma_densidade_de_problemas_da_mesma_nota():
+    """A garantia central: 0,4 achado por arquivo é 0,4 achado por arquivo,
+    tenha o repositório 200 ou 20 000 arquivos.
+
+    Sem isso, medido em numpy/numpy, 1929 achados baixos em 2361 arquivos
+    saturavam em zero — o mesmo veredito de um projeto de dez arquivos com
+    trinta problemas graves.
+    """
+    pequeno = _com_arquivos(
+        FindingCategory.QUALITY,
+        [make_finding(Severity.LOW, FindingCategory.QUALITY) for _ in range(80)],
+        200,
+    )
+    grande = _com_arquivos(
+        FindingCategory.QUALITY,
+        [make_finding(Severity.LOW, FindingCategory.QUALITY) for _ in range(8000)],
+        20_000,
+    )
+    assert score_dimension(pequeno).score == score_dimension(grande).score
+
+
+def test_repositorio_grande_e_saudavel_nao_satura_em_zero():
+    """Um projeto grande e bem cuidado tem muitos achados baixos em termos
+    absolutos. Isso não pode significar nota zero."""
+    achados = [make_finding(Severity.LOW, FindingCategory.QUALITY) for _ in range(1900)]
+    achados += [make_finding(Severity.MEDIUM, FindingCategory.QUALITY) for _ in range(500)]
+
+    pontuacao = score_dimension(_com_arquivos(FindingCategory.QUALITY, achados, 2361)).score
+    assert pontuacao is not None
+    assert pontuacao > 40
+
+
+def test_densidade_maior_continua_dando_nota_menor():
+    """A trava contra o excesso de tolerância: normalizar não pode virar
+    indulto — o repositório com o dobro de problemas por arquivo tem de sair
+    pior."""
+    poucos = _com_arquivos(
+        FindingCategory.QUALITY,
+        [make_finding(Severity.MEDIUM, FindingCategory.QUALITY) for _ in range(100)],
+        1000,
+    )
+    muitos = _com_arquivos(
+        FindingCategory.QUALITY,
+        [make_finding(Severity.MEDIUM, FindingCategory.QUALITY) for _ in range(400)],
+        1000,
+    )
+    assert score_dimension(muitos).score < score_dimension(poucos).score
+
+
+def test_abaixo_da_linha_de_base_nada_muda():
+    """Repositório pequeno mantém exatamente o comportamento anterior — é a
+    faixa em que os pesos de severidade foram calibrados."""
+    um_critico = _com_arquivos(FindingCategory.SECURITY, [make_finding(Severity.CRITICAL)], 10)
+    # 100 - 40*sqrt(1) = 60, o mesmo valor de antes da normalização.
+    assert score_dimension(um_critico).score == 60
+
+
+def test_repositorio_minusculo_nao_e_punido_pela_raridade():
+    """Um achado num repositório de cinco arquivos não é dez vezes pior do que
+    o mesmo achado num de cinquenta."""
+    minusculo = _com_arquivos(FindingCategory.SECURITY, [make_finding(Severity.HIGH)], 5)
+    medio = _com_arquivos(FindingCategory.SECURITY, [make_finding(Severity.HIGH)], 50)
+    assert score_dimension(minusculo).score == score_dimension(medio).score
