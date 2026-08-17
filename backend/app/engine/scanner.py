@@ -26,13 +26,17 @@ class ScanError(Exception):
     """Falha ao percorrer o repositório. Mensagem segura para exibir."""
 
 
-def _relative_path(root: Path, path: Path) -> str:
+def _relative_path(root_resolved: Path, path: Path) -> str:
     """Caminho relativo à raiz, normalizado e sempre com barras POSIX — para que
     um achado tenha o mesmo `file_path` no Windows e no Linux.
 
     Também é a barreira de contenção: um caminho que resolva para fora da raiz é
-    recusado em vez de virar item do inventário."""
-    root_resolved = root.resolve()
+    recusado em vez de virar item do inventário.
+
+    Recebe a raiz **já resolvida**. Resolvê-la aqui custava uma syscall por
+    arquivo para recalcular sempre o mesmo valor — medido em django/django,
+    28 032 chamadas a `_getfinalpathname`, metade delas para a mesma raiz.
+    """
     resolved = path.resolve()
     if not resolved.is_relative_to(root_resolved):
         raise ScanError("Arquivo fora da raiz do repositório foi ignorado por segurança.")
@@ -52,6 +56,10 @@ def scan_repository(root: Path) -> RepositoryScan:
     scan = RepositoryScan(root=str(root))
     total_bytes = 0
 
+    # A raiz não muda durante o percurso; resolvê-la uma vez basta, e é o mesmo
+    # valor que a barreira de contenção compara a cada arquivo.
+    root_resolved = root.resolve()
+
     descoberta = discover_files(root)
     candidates = descoberta.analyzable
 
@@ -60,7 +68,7 @@ def scan_repository(root: Path) -> RepositoryScan:
     # conteúdo destes arquivos nunca é aberto.
     for grande in descoberta.oversized:
         try:
-            relative = _relative_path(root, grande)
+            relative = _relative_path(root_resolved, grande)
             size = grande.stat().st_size
         except ScanError as exc:
             logger.warning("Arquivo grande descartado no scan: %s", exc)
@@ -80,7 +88,7 @@ def scan_repository(root: Path) -> RepositoryScan:
 
     for path in candidates:
         try:
-            relative = _relative_path(root, path)
+            relative = _relative_path(root_resolved, path)
         except ScanError as exc:
             logger.warning("Arquivo descartado no scan: %s", exc)
             continue
