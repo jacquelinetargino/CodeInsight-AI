@@ -9,6 +9,33 @@
       name="description"
       content="Analise repositórios do GitHub em segundos: segurança, qualidade, dependências, arquitetura, testes, configuração, documentação e git."
     />
+    <!--
+      Aplica o tema antes da primeira pintura.
+
+      Se isto esperasse o React montar, quem usa o tema escuro veria um lampejo
+      branco em toda navegação. É inline e síncrono de propósito: um arquivo
+      externo seria baixado tarde demais para servir ao propósito.
+
+      A chave é a mesma de `src/lib/theme.ts` — mudá-la aqui sem mudar lá traz o
+      lampejo de volta.
+    -->
+    <script>
+      (function () {
+        try {
+          var guardado = localStorage.getItem("codeinsight-theme");
+          var automatico = !guardado || guardado === "system";
+          var escuro =
+            guardado === "dark" ||
+            (automatico && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (escuro) {
+            document.documentElement.classList.add("dark");
+          }
+          document.documentElement.style.colorScheme = escuro ? "dark" : "light";
+        } catch (e) {
+          /* localStorage bloqueado: fica no tema claro, que é o padrão do CSS. */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -3,7 +3,13 @@ import { useState } from "react";
 import { SeverityBadge } from "@/components/analysis/SeverityBadge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useRequestFix } from "@/hooks/useAnalysis";
 import { ApiError } from "@/lib/api";
 import type { Finding, FixSuggestion } from "@/types";
@@ -136,7 +142,8 @@ export function FindingItem({ finding, analysisId }: { finding: Finding; analysi
                 <p className="text-sm">{fix.explanation}</p>
               </div>
               <p className="text-xs text-muted-foreground">
-                Esta correção não foi aplicada no repositório — copie o trecho manualmente se quiser usá-la.
+                Esta correção não foi aplicada no repositório — copie o trecho manualmente se quiser
+                usá-la.
               </p>
             </div>
           )}

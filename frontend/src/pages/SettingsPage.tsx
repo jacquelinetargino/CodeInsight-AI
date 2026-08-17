@@ -40,14 +40,13 @@ export function SettingsPage() {
             <KeyRound className="h-4 w-4" /> Personal Access Token do GitHub
           </CardTitle>
           <CardDescription>
-            Sem token, você já pode analisar qualquer repositório público. Conecte um PAT
-            para analisar repositórios privados e listar automaticamente os seus repositórios.
-            Crie um em{" "}
+            Sem token, você já pode analisar qualquer repositório público. Conecte um PAT para
+            analisar repositórios privados e listar automaticamente os seus repositórios. Crie um em{" "}
             <a
               href="https://github.com/settings/tokens"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-primary hover:underline"
+              className="inline-flex items-center gap-1 text-primary-text hover:underline"
             >
               github.com/settings/tokens <ExternalLink className="h-3 w-3" />
             </a>{" "}

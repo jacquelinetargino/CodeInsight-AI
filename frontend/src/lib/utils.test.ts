@@ -13,8 +13,8 @@ describe("scoreColor", () => {
   });
 
   it("returns destructive color for low scores", () => {
-    expect(scoreColor(20)).toBe("text-destructive");
-    expect(scoreColor(0)).toBe("text-destructive");
+    expect(scoreColor(20)).toBe("text-destructive-text");
+    expect(scoreColor(0)).toBe("text-destructive-text");
   });
 });
 

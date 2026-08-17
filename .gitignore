@@ -37,3 +37,8 @@ npm-debug.log*
 
 # Alembic
 backend/alembic/versions/__pycache__/
+
+# Artefatos de build do TypeScript/Vite gerados por `tsc`/`vite build`.
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts

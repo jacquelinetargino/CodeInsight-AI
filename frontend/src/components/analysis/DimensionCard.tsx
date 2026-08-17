@@ -4,7 +4,13 @@ import { Progress } from "@/components/ui/progress";
 import { cn, scoreColor } from "@/lib/utils";
 import { dimensionLabel, type AnalysisResult } from "@/types";
 
-export function DimensionCard({ result, analysisId }: { result: AnalysisResult; analysisId: string }) {
+export function DimensionCard({
+  result,
+  analysisId,
+}: {
+  result: AnalysisResult;
+  analysisId: string;
+}) {
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0">

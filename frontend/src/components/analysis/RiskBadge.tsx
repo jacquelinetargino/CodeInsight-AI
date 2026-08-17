@@ -20,7 +20,7 @@ const RISK_STYLES: Record<RiskLevel, { icon: typeof Info; className: string }> =
   },
   high: {
     icon: AlertTriangle,
-    className: "border-destructive/40 bg-destructive/10 text-destructive",
+    className: "border-destructive/40 bg-destructive/10 text-destructive-text",
   },
   critical: {
     icon: AlertOctagon,

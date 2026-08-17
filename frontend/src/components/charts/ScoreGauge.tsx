@@ -15,12 +15,23 @@ export function ScoreGauge({ score, size = 160, label = "Score Geral" }: ScoreGa
 
   const colorClass = scoreColor(clamped);
   const strokeColor =
-    clamped >= 80 ? "hsl(var(--success))" : clamped >= 50 ? "hsl(var(--warning))" : "hsl(var(--destructive))";
+    clamped >= 80
+      ? "hsl(var(--success))"
+      : clamped >= 50
+        ? "hsl(var(--warning))"
+        : "hsl(var(--destructive))";
 
   return (
     <div className="flex flex-col items-center gap-2">
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={center} cy={center} r={radius} stroke="hsl(var(--secondary))" strokeWidth={12} fill="none" />
+        <circle
+          cx={center}
+          cy={center}
+          r={radius}
+          stroke="hsl(var(--secondary))"
+          strokeWidth={12}
+          fill="none"
+        />
         <circle
           cx={center}
           cy={center}

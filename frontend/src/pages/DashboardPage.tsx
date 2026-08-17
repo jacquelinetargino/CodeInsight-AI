@@ -28,7 +28,10 @@ export function DashboardPage() {
   const [repoInput, setRepoInput] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
 
-  const importedFullNames = useMemo(() => new Set((imported ?? []).map((r) => r.full_name)), [imported]);
+  const importedFullNames = useMemo(
+    () => new Set((imported ?? []).map((r) => r.full_name)),
+    [imported],
+  );
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -38,7 +41,9 @@ export function DashboardPage() {
       setRepoInput("");
       navigate(`/repos/${repo.id}`);
     } catch (err) {
-      setAddError(err instanceof ApiError ? err.message : "Não foi possível adicionar o repositório.");
+      setAddError(
+        err instanceof ApiError ? err.message : "Não foi possível adicionar o repositório.",
+      );
     }
   }
 
@@ -46,7 +51,9 @@ export function DashboardPage() {
     <AppShell>
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Analise qualquer repositório do GitHub em oito dimensões.</p>
+        <p className="text-muted-foreground">
+          Analise qualquer repositório do GitHub em oito dimensões.
+        </p>
       </div>
 
       {loadingSummary ? (
@@ -56,7 +63,11 @@ export function DashboardPage() {
           ))}
         </div>
       ) : (
-        summary && <div className="mb-6"><SummaryCards summary={summary} /></div>
+        summary && (
+          <div className="mb-6">
+            <SummaryCards summary={summary} />
+          </div>
+        )
       )}
 
       <Card className="mb-6">
@@ -98,7 +109,10 @@ export function DashboardPage() {
           )}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {imported?.map((repo) => (
-              <Card key={repo.id} className="flex flex-col justify-between transition-shadow hover:shadow-md">
+              <Card
+                key={repo.id}
+                className="flex flex-col justify-between transition-shadow hover:shadow-md"
+              >
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
                     {repo.private && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
@@ -128,7 +142,8 @@ export function DashboardPage() {
             <div className="rounded-lg border border-dashed border-border p-8 text-center">
               <KeyRound className="mx-auto mb-3 h-6 w-6 text-muted-foreground" />
               <p className="mb-3 text-sm text-muted-foreground">
-                Conecte um Personal Access Token do GitHub para listar seus repositórios automaticamente.
+                Conecte um Personal Access Token do GitHub para listar seus repositórios
+                automaticamente.
               </p>
               <Link to="/settings">
                 <Button variant="outline">Ir para Configurações</Button>
@@ -167,7 +182,8 @@ export function DashboardPage() {
                         className="w-full gap-1.5"
                         onClick={() => addRepository.mutate(repo.full_name)}
                       >
-                        <GitFork className="h-3.5 w-3.5" /> {isImported ? "Já adicionado" : "Adicionar"}
+                        <GitFork className="h-3.5 w-3.5" />{" "}
+                        {isImported ? "Já adicionado" : "Adicionar"}
                       </Button>
                     </CardFooter>
                   </Card>
