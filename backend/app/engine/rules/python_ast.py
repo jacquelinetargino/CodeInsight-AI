@@ -10,11 +10,25 @@ severidade, é trabalho do analyzer que consome isto.
 """
 
 import ast
+import hashlib
+from collections import OrderedDict
 from dataclasses import dataclass, field
 
 # Trecho de código na evidência serve para o humano se situar, não para
 # reproduzir o arquivo.
 MAX_EVIDENCE_CHARS = 200
+
+# Relatórios já calculados, indexados pelo digest do conteúdo. Ver `analyze_python`.
+#
+# O teto acompanha `ENGINE_MAX_FILES` para caber uma análise inteira; os
+# relatórios guardam ocorrências e métricas, não o texto do arquivo, então cada
+# entrada é pequena.
+#
+# Sem trava: a análise roda numa thread por vez e as operações de dict são
+# atômicas sob o GIL. Duas análises simultâneas, no pior caso, recalculam um
+# relatório — nunca devolvem um errado, porque a chave é o conteúdo.
+_CACHE_MAX_ENTRIES = 20_000
+_CACHE: "OrderedDict[bytes, PythonModuleReport]" = OrderedDict()
 
 # Acima disto uma função deixa de caber na cabeça de quem lê. O valor é
 # convencional, não científico — por isso os achados derivados são heurísticos.
@@ -306,14 +320,7 @@ def _cyclomatic_complexity(node: ast.AST) -> int:
     return complexidade
 
 
-def analyze_python(source: str) -> PythonModuleReport:
-    """Analisa um módulo Python a partir do texto.
-
-    Nunca executa nem importa o código: `ast.parse` só constrói a árvore.
-    Arquivo com sintaxe inválida — comum em repositório de terceiros, que pode
-    ter Python 2 ou código quebrado — devolve um relatório com `parse_error` em
-    vez de derrubar a análise.
-    """
+def _analisar(source: str) -> PythonModuleReport:
     try:
         arvore = ast.parse(source)
     except (SyntaxError, ValueError, RecursionError) as exc:
@@ -322,3 +329,42 @@ def analyze_python(source: str) -> PythonModuleReport:
     visitante = _Visitor(source.splitlines())
     visitante.visit(arvore)
     return visitante.report
+
+
+def analyze_python(source: str) -> PythonModuleReport:
+    """Analisa um módulo Python a partir do texto.
+
+    Nunca executa nem importa o código: `ast.parse` só constrói a árvore.
+    Arquivo com sintaxe inválida — comum em repositório de terceiros, que pode
+    ter Python 2 ou código quebrado — devolve um relatório com `parse_error` em
+    vez de derrubar a análise.
+
+    O resultado é memoizado por conteúdo. Dois analyzers consomem este mesmo
+    relatório — segurança traduz as ocorrências de risco, qualidade as de
+    manutenibilidade — e cada um chamava a função por conta própria: medido,
+    248 chamadas para 124 arquivos, 44% do tempo total da análise.
+
+    A chave é o digest do conteúdo, não o texto: guardar o fonte inteiro como
+    chave custaria dezenas de MB num repositório grande, que é justamente onde
+    o cache importa.
+    """
+    chave = hashlib.blake2b(source.encode("utf-8", "surrogatepass"), digest_size=16).digest()
+
+    guardado = _CACHE.get(chave)
+    if guardado is not None:
+        return guardado
+
+    relatorio = _analisar(source)
+
+    # Descarta o mais antigo ao encher. Sem o teto, analisar repositórios
+    # grandes em sequência faria o processo crescer sem limite.
+    _CACHE[chave] = relatorio
+    if len(_CACHE) > _CACHE_MAX_ENTRIES:
+        _CACHE.popitem(last=False)
+
+    return relatorio
+
+
+def clear_analysis_cache() -> None:
+    """Esvazia o cache. Existe para os testes — em produção o teto basta."""
+    _CACHE.clear()
