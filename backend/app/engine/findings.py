@@ -40,11 +40,35 @@ class FindingCategory(str, Enum):
     CONFIGURATION = "configuration"
 
 
+class DetectionMethod(str, Enum):
+    """Como o achado foi obtido.
+
+    Existe porque a confiança sozinha não separava as coisas: um `os.system()`
+    confirmado pela AST sai com 0.85 e um palpite de regex em JavaScript com
+    0.7 — dois números diferentes que caem na mesma faixa de rótulo e chegam ao
+    usuário como se fossem a mesma coisa. São evidências de naturezas
+    diferentes, e quem lê o relatório precisa saber qual está vendo.
+    """
+
+    #: Árvore sintática. O parser confirmou a estrutura; não há ambiguidade
+    #: sobre o que o código diz.
+    AST = "ast"
+
+    #: Casamento textual, sem parser. Não distingue código de string, de
+    #: comentário ou de template — daí o teto de confiança mais baixo.
+    TEXT = "text"
+
+    #: Presença, nome, tamanho ou conteúdo de manifesto. Não olha o código:
+    #: olha o repositório.
+    METADATA = "metadata"
+
+
 class Finding(BaseModel):
     """Um achado concreto, ancorado num arquivo e numa regra.
 
     `confidence` existe porque boa parte da análise é heurística: afirmar
     certeza sobre o que foi apenas inferido é pior do que declarar a dúvida.
+    `detection_method` completa isso dizendo de onde veio a evidência.
     """
 
     id: str = Field(description="Identificador estável, derivado do conteúdo do achado")
@@ -62,6 +86,10 @@ class Finding(BaseModel):
     )
     recommendation: str | None = None
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+    detection_method: DetectionMethod = Field(
+        default=DetectionMethod.METADATA,
+        description="De onde veio a evidência: árvore sintática, texto ou metadado",
+    )
     analyzer: str
 
     @field_validator("evidence")
@@ -96,6 +124,7 @@ class Finding(BaseModel):
             "line_end": self.line_end,
             "evidence": self.evidence,
             "confidence": self.confidence,
+            "detection_method": self.detection_method.value,
             "analyzer": self.analyzer,
         }
 
@@ -132,6 +161,12 @@ class Finding(BaseModel):
             evidence=data.get("evidence"),
             recommendation=data.get("recommendation", data.get("suggestion")),
             confidence=data.get("confidence", 0.5 if legacy else 1.0),
+            # Análise antiga não registrava o método. METADATA é o padrão
+            # honesto: afirmar "AST" sobre um achado cuja origem não se conhece
+            # seria inventar procedência.
+            detection_method=DetectionMethod(
+                data.get("detection_method", DetectionMethod.METADATA.value)
+            ),
             analyzer=data.get("analyzer", "legacy"),
         )
 

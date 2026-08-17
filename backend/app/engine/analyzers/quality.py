@@ -14,7 +14,7 @@ from pathlib import Path
 
 from app.engine.acquisition import read_text
 from app.engine.analyzers.base import AnalyzerResult
-from app.engine.findings import Finding, FindingCategory
+from app.engine.findings import DetectionMethod, Finding, FindingCategory
 from app.engine.models import RepositoryScan
 from app.engine.rules.javascript import analyze_javascript
 from app.engine.rules.python_ast import analyze_python
@@ -107,7 +107,10 @@ class QualityAnalyzer:
             # a ausência de achados como ausência de problemas.
             return [], f"{relative_path}: {relatorio.parse_error}"
 
-        return self._traduzir(relative_path, relatorio.issues, _AST_RULE_BY_KIND, None), None
+        achados = self._traduzir(
+            relative_path, relatorio.issues, _AST_RULE_BY_KIND, None, DetectionMethod.AST
+        )
+        return achados, None
 
     def _scan_javascript(self, relative_path: str, content: str) -> list[Finding]:
         return self._traduzir(
@@ -115,6 +118,7 @@ class QualityAnalyzer:
             analyze_javascript(content).issues,
             _JS_RULE_BY_KIND,
             _JS_CONFIDENCE,
+            DetectionMethod.TEXT,
         )
 
     def _traduzir(
@@ -123,6 +127,7 @@ class QualityAnalyzer:
         ocorrencias,
         mapa: dict[str, str],
         teto_confianca: float | None,
+        metodo: DetectionMethod,
     ) -> list[Finding]:
         achados: list[Finding] = []
         arquivo_de_teste = is_test_file(relative_path)
@@ -148,6 +153,7 @@ class QualityAnalyzer:
                     evidence=ocorrencia.evidence,
                     description=ocorrencia.detail or regra.description,
                     confidence=confianca,
+                    detection_method=metodo,
                 )
             )
         return achados

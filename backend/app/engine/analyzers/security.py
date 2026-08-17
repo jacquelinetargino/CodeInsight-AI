@@ -12,7 +12,7 @@ from pathlib import Path
 
 from app.engine.acquisition import read_text
 from app.engine.analyzers.base import AnalyzerResult
-from app.engine.findings import Finding, FindingCategory
+from app.engine.findings import DetectionMethod, Finding, FindingCategory
 from app.engine.models import RepositoryScan
 from app.engine.rules.javascript import analyze_javascript
 from app.engine.rules.python_ast import analyze_python
@@ -144,6 +144,7 @@ class SecurityAnalyzer:
                     # A confiança do padrão manda: um prefixo proprietário vale
                     # mais que uma atribuição genérica.
                     confidence=min(regra.confidence, ocorrencia.confidence),
+                    detection_method=DetectionMethod.TEXT,
                     severity=Severity.LOW if em_teste else None,
                     description=(
                         f"{regra.description}\n\nEste arquivo está em um caminho de teste, "
@@ -179,6 +180,7 @@ class SecurityAnalyzer:
                     line_end=ocorrencia.line,
                     evidence=ocorrencia.evidence,
                     description=ocorrencia.detail or regra.description,
+                    detection_method=DetectionMethod.AST,
                 )
             )
         return achados, None
@@ -203,6 +205,7 @@ class SecurityAnalyzer:
                     evidence=ocorrencia.evidence,
                     description=ocorrencia.detail or regra.description,
                     confidence=min(regra.confidence, _JS_CONFIDENCE),
+                    detection_method=DetectionMethod.TEXT,
                 )
             )
         return achados
@@ -225,6 +228,7 @@ class SecurityAnalyzer:
                     analyzer=self.name,
                     file_path=arquivo.path,
                     evidence=f"{arquivo.path} ({arquivo.size_bytes} bytes)",
+                    detection_method=DetectionMethod.METADATA,
                     severity=Severity.LOW if em_teste else None,
                     description=(
                         f"{regra.description}\n\nEste arquivo está em um caminho de teste, "
