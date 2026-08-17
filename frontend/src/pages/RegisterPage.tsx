@@ -34,7 +34,9 @@ export function RegisterPage() {
     try {
       await register(email, password, username);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Não foi possível criar a conta. Tente novamente.");
+      setError(
+        err instanceof ApiError ? err.message : "Não foi possível criar a conta. Tente novamente.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -102,7 +104,7 @@ export function RegisterPage() {
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Já tem conta?{" "}
-            <Link to="/login" className="font-medium text-primary hover:underline">
+            <Link to="/login" className="font-medium text-primary-text hover:underline">
               Entrar
             </Link>
           </p>

@@ -83,12 +83,15 @@ export const api = {
         method: "PUT",
         body: JSON.stringify({ token }),
       }),
-    deleteGithubToken: () => request<GithubTokenStatus>("/settings/github-token", { method: "DELETE" }),
+    deleteGithubToken: () =>
+      request<GithubTokenStatus>("/settings/github-token", { method: "DELETE" }),
   },
   repos: {
-    listMineFromGithub: (page = 1) => request<GithubRepo[]>(`/repos/github/mine?page=${page}&per_page=30`),
+    listMineFromGithub: (page = 1) =>
+      request<GithubRepo[]>(`/repos/github/mine?page=${page}&per_page=30`),
     listImported: () => request<Repository[]>("/repos"),
-    add: (repo: string) => request<Repository>("/repos", { method: "POST", body: JSON.stringify({ repo }) }),
+    add: (repo: string) =>
+      request<Repository>("/repos", { method: "POST", body: JSON.stringify({ repo }) }),
     get: (id: string) => request<Repository>(`/repos/${id}`),
     getGithubSummary: (id: string) => request<GithubRepoSummary>(`/repos/${id}/github-summary`),
   },
@@ -106,8 +109,17 @@ export const api = {
     getReadme: (id: string) => request<{ content: string }>(`/analysis/${id}/readme`),
     requestFix: (
       id: string,
-      payload: { title: string; description: string; file_path: string | null; line: number | null },
-    ) => request<FixSuggestion>(`/analysis/${id}/fix`, { method: "POST", body: JSON.stringify(payload) }),
+      payload: {
+        title: string;
+        description: string;
+        file_path: string | null;
+        line: number | null;
+      },
+    ) =>
+      request<FixSuggestion>(`/analysis/${id}/fix`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
     downloadPdf: async (id: string, filename: string) => {
       // Download via <a href> não funciona aqui: a autenticação é por header
       // "Authorization: Bearer" (não cookie), e uma navegação de link comum não

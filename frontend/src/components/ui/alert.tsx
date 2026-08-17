@@ -6,7 +6,8 @@ const alertVariants = cva("relative w-full rounded-lg border p-4 text-sm [&>svg]
   variants: {
     variant: {
       default: "bg-background text-foreground border-border",
-      destructive: "border-destructive/40 bg-destructive/10 text-destructive [&>svg]:text-destructive",
+      destructive:
+        "border-destructive/40 bg-destructive/10 text-destructive-text [&>svg]:text-destructive-text",
     },
   },
   defaultVariants: { variant: "default" },
@@ -20,11 +21,12 @@ const Alert = React.forwardRef<
 ));
 Alert.displayName = "Alert";
 
-const AlertDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("leading-relaxed", className)} {...props} />
-  ),
-);
+const AlertDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("leading-relaxed", className)} {...props} />
+));
 AlertDescription.displayName = "AlertDescription";
 
 export { Alert, AlertDescription };

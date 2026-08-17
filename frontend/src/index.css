@@ -25,8 +25,13 @@
        (medido: warning 2.08:1, success 3.13:1 sobre o fundo). */
     --success-text: 152 65% 31%;
     --warning-text: 38 95% 32%;
+    --primary-text: 243 75% 59%;
+    --destructive-text: 0 72% 51%;
     --border: 240 6% 90%;
-    --input: 240 6% 90%;
+    /* Borda de campo de formulário é elemento funcional: você precisa enxergar
+       onde digitar. O mínimo para elemento não textual é 3:1, e o valor antigo
+       (igual ao de `--border`) dava 1,27:1. */
+    --input: 240 6% 59%;
     --ring: 243 75% 59%;
     --radius: 0.75rem;
   }
@@ -51,8 +56,14 @@
     /* No escuro o ajuste é para o outro lado: as cores precisam clarear. */
     --success-text: 152 55% 45%;
     --warning-text: 38 92% 45%;
-    --border: 240 10% 20%;
-    --input: 240 10% 20%;
+    /* Medido sobre o card do tema escuro: `--primary` dava 4,30:1 e
+       `--destructive` 3,53:1, ambos abaixo dos 4,5:1 exigidos para texto.
+       As versões vivas continuam servindo de preenchimento, onde é o texto
+       branco por cima que precisa de contraste. */
+    --primary-text: 243 82% 69%;
+    --destructive-text: 0 72% 59%;
+    --border: 240 10% 24%;
+    --input: 240 10% 43%;
     --ring: 243 82% 68%;
   }
 

@@ -15,7 +15,7 @@ export function cn(...inputs: ClassValue[]) {
 export function scoreColor(score: number): string {
   if (score >= 80) return "text-success-text";
   if (score >= 50) return "text-warning-text";
-  return "text-destructive";
+  return "text-destructive-text";
 }
 
 export function formatDate(iso: string): string {

@@ -44,8 +44,12 @@ export function useGenerateReadme(analysisId: string) {
 export function useRequestFix(analysisId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { title: string; description: string; file_path: string | null; line: number | null }) =>
-      api.analysis.requestFix(analysisId, payload),
+    mutationFn: (payload: {
+      title: string;
+      description: string;
+      file_path: string | null;
+      line: number | null;
+    }) => api.analysis.requestFix(analysisId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["analysis", analysisId] });
     },

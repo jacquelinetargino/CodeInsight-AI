@@ -14,7 +14,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAnalysisDetail, useAnalysisHistory, useCreateAnalysis, useGenerateReadme } from "@/hooks/useAnalysis";
+import {
+  useAnalysisDetail,
+  useAnalysisHistory,
+  useCreateAnalysis,
+  useGenerateReadme,
+} from "@/hooks/useAnalysis";
 import { useGithubSummary, useRepository } from "@/hooks/useRepos";
 import { api } from "@/lib/api";
 import { cn, formatDate, scoreColor } from "@/lib/utils";
@@ -48,7 +53,10 @@ export function RepoAnalysisPage() {
     if (!analysis || !repository) return;
     setDownloadingPdf(true);
     try {
-      await api.analysis.downloadPdf(analysis.id, `codeinsight-${repository.full_name.replace("/", "-")}.pdf`);
+      await api.analysis.downloadPdf(
+        analysis.id,
+        `codeinsight-${repository.full_name.replace("/", "-")}.pdf`,
+      );
     } finally {
       setDownloadingPdf(false);
     }
@@ -79,7 +87,9 @@ export function RepoAnalysisPage() {
           <CardContent className="space-y-2">
             {loadingHistory && <Skeleton className="h-16 w-full" />}
             {history?.length === 0 && (
-              <p className="text-sm text-muted-foreground">Nenhuma análise ainda. Clique em "Nova análise".</p>
+              <p className="text-sm text-muted-foreground">
+                Nenhuma análise ainda. Clique em "Nova análise".
+              </p>
             )}
             {history?.map((item) => (
               <button
@@ -98,7 +108,9 @@ export function RepoAnalysisPage() {
                     </span>
                   )}
                 </div>
-                <span className="mt-1 block text-xs text-muted-foreground">{formatDate(item.created_at)}</span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  {formatDate(item.created_at)}
+                </span>
               </button>
             ))}
           </CardContent>
@@ -128,12 +140,18 @@ export function RepoAnalysisPage() {
                     {analysis.status === "failed" && (
                       /* role=alert: a falha precisa ser anunciada por leitor de
                          tela, não só ficar vermelha na tela. */
-                      <p role="alert" className="max-w-xs text-center text-sm text-destructive">
+                      <p
+                        role="alert"
+                        className="max-w-xs text-center text-sm text-destructive-text"
+                      >
                         {analysis.error_message}
                       </p>
                     )}
                     {(analysis.status === "queued" || analysis.status === "running") && (
-                      <p aria-live="polite" className="max-w-xs text-center text-sm text-muted-foreground">
+                      <p
+                        aria-live="polite"
+                        className="max-w-xs text-center text-sm text-muted-foreground"
+                      >
                         Baixando e analisando o repositório — costuma levar menos de um minuto.
                       </p>
                     )}
@@ -145,7 +163,11 @@ export function RepoAnalysisPage() {
               {analysis.results.length > 0 && (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {analysis.results.map((result) => (
-                    <DimensionCard key={result.dimension} result={result} analysisId={analysis.id} />
+                    <DimensionCard
+                      key={result.dimension}
+                      result={result}
+                      analysisId={analysis.id}
+                    />
                   ))}
                 </div>
               )}
@@ -156,11 +178,17 @@ export function RepoAnalysisPage() {
               {(analysis.unevaluated_dimensions?.length ?? 0) > 0 && (
                 <Card>
                   <CardContent className="flex items-start gap-3 p-4">
-                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <Info
+                      className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
+                      aria-hidden="true"
+                    />
                     <p className="text-sm text-muted-foreground">
-                      <span className="font-medium text-foreground">Não avaliado nesta análise:</span>{" "}
-                      {analysis.unevaluated_dimensions!.map(dimensionLabel).join(", ")}. Estas dimensões
-                      não entraram no score — ausência de avaliação não é ausência de problema.
+                      <span className="font-medium text-foreground">
+                        Não avaliado nesta análise:
+                      </span>{" "}
+                      {analysis.unevaluated_dimensions!.map(dimensionLabel).join(", ")}. Estas
+                      dimensões não entraram no score — ausência de avaliação não é ausência de
+                      problema.
                     </p>
                   </CardContent>
                 </Card>
@@ -173,7 +201,8 @@ export function RepoAnalysisPage() {
                       <Lightbulb className="h-3.5 w-3.5" /> Sugestões
                     </TabsTrigger>
                     <TabsTrigger value="fixes" className="gap-1.5">
-                      <Wrench className="h-3.5 w-3.5" /> Correções ({analysis.fix_suggestions.length})
+                      <Wrench className="h-3.5 w-3.5" /> Correções (
+                      {analysis.fix_suggestions.length})
                     </TabsTrigger>
                     <TabsTrigger value="readme" className="gap-1.5">
                       <FileText className="h-3.5 w-3.5" /> README
@@ -195,7 +224,8 @@ export function RepoAnalysisPage() {
                   <TabsContent value="fixes" className="space-y-3">
                     {analysis.fix_suggestions.length === 0 && (
                       <p className="text-sm text-muted-foreground">
-                        Nenhuma correção solicitada ainda — clique em "Solicitar correção" em um achado acima.
+                        Nenhuma correção solicitada ainda — clique em "Solicitar correção" em um
+                        achado acima.
                       </p>
                     )}
                     {analysis.fix_suggestions.map((fix) => (
@@ -236,7 +266,12 @@ export function RepoAnalysisPage() {
 
               {analysis.status === "done" && (
                 <div className="flex justify-end">
-                  <Button variant="outline" className="gap-2" onClick={handleDownloadPdf} disabled={downloadingPdf}>
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={handleDownloadPdf}
+                    disabled={downloadingPdf}
+                  >
                     <Download className="h-4 w-4" />
                     {downloadingPdf ? "Gerando PDF…" : "Exportar relatório em PDF"}
                   </Button>

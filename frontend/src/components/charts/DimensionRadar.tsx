@@ -19,7 +19,10 @@ export function DimensionRadar({ results }: { results: AnalysisResult[] }) {
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart data={data} outerRadius="75%">
           <PolarGrid stroke="hsl(var(--border))" />
-          <PolarAngleAxis dataKey="dimension" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+          <PolarAngleAxis
+            dataKey="dimension"
+            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+          />
           <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
           <Radar
             name="Score"
