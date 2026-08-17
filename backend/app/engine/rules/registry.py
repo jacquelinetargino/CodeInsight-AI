@@ -9,7 +9,7 @@ independentemente de quem o detectou.
 from pydantic import BaseModel, Field
 
 from app.engine.findings import Finding, FindingCategory, build_finding_id
-from app.models.enums import Severity
+from app.enums import Severity
 
 
 class DuplicateRuleError(Exception):
