@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field
 
 from app.engine.analyzers.base import AnalyzerResult
 from app.engine.findings import Finding, FindingCategory
-from app.models.enums import Severity
+from app.enums import Severity
 
 MAX_SCORE = 100
 

@@ -20,7 +20,7 @@ from app.engine.rules.registry import RuleRegistry
 from app.engine.rules.secrets import detect_secrets
 from app.engine.rules.security_rules import register_security_rules
 from app.engine.rules.testing import is_test_file
-from app.models.enums import Severity
+from app.enums import Severity
 
 logger = logging.getLogger(__name__)
 

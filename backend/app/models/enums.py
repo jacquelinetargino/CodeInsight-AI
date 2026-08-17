@@ -1,33 +1,15 @@
-import enum
+"""Reexporta os enums de domínio, que vivem em `app.enums`.
 
+Este módulo existe só para compatibilidade: `from app.models.enums import ...`
+aparece em muitos lugares e continua funcionando.
 
-class AnalysisStatus(str, enum.Enum):
-    QUEUED = "queued"
-    RUNNING = "running"
-    DONE = "done"
-    FAILED = "failed"
+A definição saiu daqui porque importar qualquer coisa de `app.models` dispara o
+`__init__` do pacote, que carrega os modelos SQLAlchemy e, com eles, a
+configuração do banco. Os enums não têm nada a ver com persistência — são tipos
+de valor — e o motor de análise precisava deles sem precisar de um Postgres
+configurado só para importar.
+"""
 
+from app.enums import AnalysisStatus, Dimension, Severity
 
-class Dimension(str, enum.Enum):
-    """Dimensões persistidas em `analysis_results.dimension`.
-
-    Espelham `app.engine.findings.FindingCategory` valor a valor. São dois enums
-    porque o motor não deve depender da camada de banco, mas divergirem seria um
-    bug: `tests/test_engine_scoring.py` falha se saírem de sincronia.
-    """
-
-    SECURITY = "security"
-    QUALITY = "quality"
-    ARCHITECTURE = "architecture"
-    DEPENDENCIES = "dependencies"
-    DOCUMENTATION = "documentation"
-    TESTING = "testing"
-    GIT = "git"
-    CONFIGURATION = "configuration"
-
-
-class Severity(str, enum.Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
+__all__ = ["AnalysisStatus", "Dimension", "Severity"]

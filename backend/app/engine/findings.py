@@ -14,7 +14,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.models.enums import Severity
+from app.enums import Severity
 
 # Evidência é um trecho para o humano entender o achado, não o arquivo inteiro.
 # O corte também evita gravar blobs enormes no JSONB.
