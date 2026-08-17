@@ -1,11 +1,18 @@
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    # Só para o verificador de tipos: em execução o SQLAlchemy resolve
+    # os nomes ao configurar os mappers, e importar de verdade aqui
+    # criaria ciclo entre os módulos de modelo.
+    from app.models.analysis import Analysis
 
 
 class FixSuggestion(Base):
@@ -30,4 +37,4 @@ class FixSuggestion(Base):
     explanation: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    analysis: Mapped["Analysis"] = relationship(back_populates="fix_suggestions")  # noqa: F821
+    analysis: Mapped["Analysis"] = relationship(back_populates="fix_suggestions")
