@@ -94,6 +94,7 @@ export type Dimension =
 export type Severity = "low" | "medium" | "high" | "critical";
 
 export type RiskLevel = "low" | "medium" | "high" | "critical";
+export type DetectionMethod = "ast" | "text" | "metadata";
 
 export interface Finding {
   title: string;
@@ -111,6 +112,8 @@ export interface Finding {
   evidence?: string | null;
   /** 0 a 1. Boa parte da análise é heurística; a dúvida é declarada. */
   confidence?: number | null;
+  /** De onde veio a evidência. A confiança sozinha não separa AST de regex. */
+  detection_method?: DetectionMethod | null;
   analyzer?: string | null;
 }
 

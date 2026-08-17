@@ -34,6 +34,12 @@ class Finding(BaseModel):
         description="0 a 1. Existe porque boa parte da análise é heurística: "
         "afirmar certeza sobre o que foi inferido seria pior que declarar a dúvida",
     )
+    detection_method: str | None = Field(
+        default=None,
+        description="ast, text ou metadata — de onde veio a evidência. A confiança "
+        "sozinha não separa um achado confirmado pela árvore sintática de um "
+        "casamento textual sem parser",
+    )
     analyzer: str | None = None
 
 

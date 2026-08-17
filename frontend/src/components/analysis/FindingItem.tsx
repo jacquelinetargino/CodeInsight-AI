@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { useRequestFix } from "@/hooks/useAnalysis";
 import { ApiError } from "@/lib/api";
-import type { Finding, FixSuggestion } from "@/types";
+import type { DetectionMethod, Finding, FixSuggestion } from "@/types";
 
 /**
  * Traduz a confiança para linguagem, em vez de mostrar "0.7".
@@ -26,6 +26,31 @@ function confidenceLabel(confidence: number): string {
   if (confidence >= 0.7) return "Detecção provável";
   return "Detecção possível — vale conferir";
 }
+
+/**
+ * Como o achado foi obtido.
+ *
+ * A confiança sozinha não separava as coisas: um `os.system()` confirmado pela
+ * árvore sintática sai com 0.9 e um casamento de regex em JavaScript com 0.7 —
+ * dois números que caem no mesmo rótulo e chegavam ao usuário como se fossem a
+ * mesma evidência.
+ */
+const METHOD_LABELS: Record<DetectionMethod, { curto: string; explicacao: string }> = {
+  ast: {
+    curto: "árvore sintática",
+    explicacao:
+      "O parser confirmou a estrutura do código — não há ambiguidade sobre o que ele diz.",
+  },
+  text: {
+    curto: "busca textual",
+    explicacao:
+      "Casamento de padrão sem parser. Não distingue código de string, comentário ou template, então vale conferir no arquivo.",
+  },
+  metadata: {
+    curto: "metadados",
+    explicacao: "Baseado em presença, nome ou tamanho de arquivo — o código em si não foi lido.",
+  },
+};
 
 export function FindingItem({ finding, analysisId }: { finding: Finding; analysisId: string }) {
   const requestFix = useRequestFix(analysisId);
@@ -65,6 +90,14 @@ export function FindingItem({ finding, analysisId }: { finding: Finding; analysi
             /* A confiança é declarada porque boa parte da análise é heurística:
                esconder a dúvida faria uma inferência parecer certeza. */
             <span>{confidenceLabel(finding.confidence)}</span>
+          )}
+          {finding.detection_method && METHOD_LABELS[finding.detection_method] && (
+            <span
+              className="cursor-help border-b border-dotted border-muted-foreground"
+              title={METHOD_LABELS[finding.detection_method].explicacao}
+            >
+              via {METHOD_LABELS[finding.detection_method].curto}
+            </span>
           )}
         </div>
       )}
