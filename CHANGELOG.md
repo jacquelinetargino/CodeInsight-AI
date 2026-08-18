@@ -9,6 +9,24 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ### Corrigido
 
+- **O download do tarball aceitava redirecionamento para `http://`.** A allowlist conferia
+  o host e não o esquema, então `http://codeload.github.com/...` passava — e a requisição
+  leva `Authorization: Bearer` em todos os saltos, medido saindo em texto claro. Quem
+  controla esse redirecionamento é o GitHub, então não era alcançável por um usuário da
+  aplicação; era a checagem que faltava para a garantia ser a que o módulo diz ter. O
+  caminho da URL do tarball também passou a ser conferido: é o terceiro lugar onde `..`
+  num segmento trocaria o endpoint chamado (ver PRs 35 e 38). Nenhuma entrada chega lá
+  com `..` hoje, e a guarda existe porque nos dois casos anteriores o que faltava era
+  exatamente ela.
+
+### Registrado como pendência
+
+- **O `Authorization` é reenviado em todos os saltos do download**, ao contrário do que o
+  httpx faz sozinho ao trocar de origem. Não foi alterado: os três hosts permitidos são
+  do GitHub, e verificar se o `codeload` precisa do token para entregar tarball de
+  repositório privado exige um repositório privado de teste. Mudar sem medir arriscaria
+  quebrar a análise de repositório privado.
+
 - **`file_path` de `POST /analysis/{id}/fix` escapava do repositório.** Mesma classe do
   PR 35, por outra porta: o campo entra no caminho de uma URL da GitHub API e o httpx
   normaliza `..` ao construir a URL. Medido, interceptando a requisição real,

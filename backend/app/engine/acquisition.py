@@ -33,7 +33,8 @@ GITHUB_API_BASE = "https://api.github.com"
 
 # O tarball da API redireciona para outro host. Seguir redirect sem restrição
 # transformaria um repositório malicioso (ou um DNS comprometido) em SSRF, então
-# só estes destinos são aceitos.
+# só estes destinos são aceitos — e só por https, porque a requisição leva
+# credencial em todos os saltos (ver `_assert_destino_permitido`).
 _ALLOWED_DOWNLOAD_HOSTS = frozenset(
     {
         "api.github.com",
@@ -88,12 +89,51 @@ class RepositoryTooLargeError(AcquisitionError):
     pass
 
 
-def _assert_host_allowed(url: str) -> None:
-    host = httpx.URL(url).host
-    if host not in _ALLOWED_DOWNLOAD_HOSTS:
+def _assert_destino_permitido(url: str) -> None:
+    """Confere host e esquema de cada salto do download.
+
+    O host sozinho não bastava. A requisição sai com `Authorization: Bearer` em
+    todos os saltos, e um redirecionamento para `http://codeload.github.com/...`
+    passava na checagem de host — medido, o token ia em texto claro:
+
+        https://api.github.com/repos/o/r/tarball/main   auth=Bearer <token>
+        http://codeload.github.com/o/r/legacy.tar.gz    auth=Bearer <token>
+
+    Quem controla esse redirecionamento é o próprio GitHub, então isto não é um
+    buraco que um usuário da aplicação alcance — é a checagem que faltava para a
+    garantia ser a que o módulo diz ter.
+    """
+    parsed = httpx.URL(url)
+    if parsed.scheme != "https":
         raise AcquisitionError(
-            f"Download redirecionado para um host não permitido ({host!r}). "
+            f"Download redirecionado para um esquema não permitido ({parsed.scheme!r}). "
+            "A requisição leva credencial e não pode sair em texto claro."
+        )
+    if parsed.host not in _ALLOWED_DOWNLOAD_HOSTS:
+        raise AcquisitionError(
+            f"Download redirecionado para um host não permitido ({parsed.host!r}). "
             "Abortado por segurança."
+        )
+
+
+def _assert_caminho_nao_reescrito(url: str, caminho_pretendido: str) -> None:
+    """Recusa a URL cujo caminho a montagem reescreva.
+
+    `full_name` e `ref` entram no caminho por f-string, e o httpx normaliza `..`
+    ao construir a `URL` — o mesmo mecanismo dos PRs 35 e 38:
+
+        /repos/dono/repo/tarball/../../../../user  ->  /user
+
+    Hoje nenhuma entrada chega aqui com `..`: `full_name` passa pela regex de
+    `resolve_repo_full_name`, e `ref` é o `default_branch` devolvido pela API do
+    GitHub, que não aceita `..` em nome de referência. A checagem existe porque
+    esta é a terceira vez que o mesmo mecanismo aparece, e nas duas anteriores o
+    que faltava era exatamente a guarda no ponto em que a URL é montada.
+    """
+    if httpx.URL(url).path != caminho_pretendido:
+        raise AcquisitionError(
+            "O caminho da requisição foi reescrito ao montar a URL, o que mudaria "
+            "qual endpoint da GitHub API é chamado. Abortado por segurança."
         )
 
 
@@ -113,7 +153,9 @@ async def _download_archive(
     `Content-Length`, então não há como conferir o tamanho antes de baixar."""
     settings = get_settings()
     limit = settings.engine_max_archive_bytes
-    url = f"{GITHUB_API_BASE}/repos/{full_name}/tarball/{ref}"
+    caminho = f"/repos/{full_name}/tarball/{ref}"
+    url = f"{GITHUB_API_BASE}{caminho}"
+    _assert_caminho_nao_reescrito(url, caminho)
 
     headers = {
         "Accept": "application/vnd.github+json",
@@ -126,7 +168,7 @@ async def _download_archive(
     async with httpx.AsyncClient(timeout=60, follow_redirects=False) as client:
         current_url = url
         for _ in range(5):  # limite de saltos, evita laço de redirecionamento
-            _assert_host_allowed(current_url)
+            _assert_destino_permitido(current_url)
             request = client.build_request("GET", current_url, headers=headers)
             response = await client.send(request, stream=True)
 

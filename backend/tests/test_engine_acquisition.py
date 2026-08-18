@@ -217,10 +217,109 @@ def test_rejects_non_gzip_payload(tmp_path: Path):
 )
 def test_redirect_allowlist(url: str, permitido: bool):
     if permitido:
-        acquisition._assert_host_allowed(url)
+        acquisition._assert_destino_permitido(url)
     else:
-        with pytest.raises(AcquisitionError, match="host não permitido"):
-            acquisition._assert_host_allowed(url)
+        with pytest.raises(AcquisitionError, match="não permitido"):
+            acquisition._assert_destino_permitido(url)
+
+
+# Só precisa parecer um gzip para o teste; o download é recusado antes de
+# qualquer leitura do conteúdo.
+GZIP_MINIMO = bytes([0x1F, 0x8B]) + bytes(100)
+
+
+# --- T15b: o esquema de cada salto ------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "esquema_ruim",
+    [
+        "http://codeload.github.com/o/r/legacy.tar.gz/main",
+        "http://api.github.com/repos/o/r/tarball/main",
+        "http://objects.githubusercontent.com/x",
+    ],
+)
+def test_host_permitido_em_http_e_recusado(esquema_ruim: str):
+    """Host permitido não basta: a requisição leva `Authorization: Bearer` em
+    todos os saltos, e em http o token sai em texto claro."""
+    with pytest.raises(AcquisitionError, match="esquema não permitido"):
+        acquisition._assert_destino_permitido(esquema_ruim)
+
+
+async def test_redirecionamento_para_http_nao_leva_o_token(tmp_path: Path, monkeypatch):
+    """A prova no caminho real, com a credencial em jogo.
+
+    Antes da checagem de esquema, o segundo salto saía assim:
+
+        http://codeload.github.com/o/r/legacy.tar.gz  auth=Bearer <token>
+    """
+    vistas: list[tuple[str, str | None]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        vistas.append((str(request.url), request.headers.get("authorization")))
+        if request.url.scheme == "https":
+            return httpx.Response(
+                302,
+                headers={"location": "http://codeload.github.com/o/r/legacy.tar.gz/main"},
+            )
+        return httpx.Response(200, content=GZIP_MINIMO)
+
+    monkeypatch.setattr(
+        httpx.AsyncClient, "send", _fake_send(httpx.MockTransport(handler)), raising=True
+    )
+
+    with pytest.raises(AcquisitionError, match="esquema não permitido"):
+        await acquisition._download_archive(
+            "TOKEN-DO-SERVIDOR", "o/r", "main", tmp_path / "a.tar.gz"
+        )
+
+    saltos_em_claro = [url for url, _ in vistas if url.startswith("http://")]
+    assert saltos_em_claro == [], f"requisição em texto claro: {saltos_em_claro}"
+    assert all(auth == "Bearer TOKEN-DO-SERVIDOR" for _, auth in vistas), vistas
+
+
+# --- T15c: o caminho da URL do tarball ---------------------------------------
+
+
+def test_caminho_do_tarball_reescrito_e_recusado():
+    """Terceira aparição do mecanismo dos PRs 35 e 38: `..` num segmento troca o
+    endpoint chamado quando o httpx normaliza a URL."""
+    caminho = "/repos/dono/repo/tarball/../../../../user"
+    with pytest.raises(AcquisitionError, match="reescrito"):
+        acquisition._assert_caminho_nao_reescrito(
+            f"{acquisition.GITHUB_API_BASE}{caminho}", caminho
+        )
+
+
+@pytest.mark.parametrize("ref", ["main", "feature/nova-coisa", "v1.2.3", "release/2024.01"])
+def test_referencia_legitima_passa(ref: str):
+    """A trava do outro lado: `/` em nome de branch é comum e não pode ser
+    confundido com navegação."""
+    caminho = f"/repos/dono/repo/tarball/{ref}"
+    acquisition._assert_caminho_nao_reescrito(f"{acquisition.GITHUB_API_BASE}{caminho}", caminho)
+
+
+async def test_download_com_referencia_hostil_nao_chama_a_api(tmp_path: Path, monkeypatch):
+    """Nenhuma entrada chega aqui com `..` hoje — `ref` é o `default_branch` da
+    API do GitHub, que não permite isso em nome de referência. O teste garante
+    que, se algum caminho novo trouxer, nenhuma requisição sai antes da recusa.
+    """
+    vistas: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        vistas.append(str(request.url))
+        return httpx.Response(200, content=GZIP_MINIMO)
+
+    monkeypatch.setattr(
+        httpx.AsyncClient, "send", _fake_send(httpx.MockTransport(handler)), raising=True
+    )
+
+    with pytest.raises(AcquisitionError, match="reescrito"):
+        await acquisition._download_archive(
+            "TOKEN-DO-SERVIDOR", "o/r", "../../../../user", tmp_path / "a.tar.gz"
+        )
+
+    assert vistas == [], f"uma requisição saiu mesmo assim: {vistas}"
 
 
 # --- T01: teto do download --------------------------------------------------

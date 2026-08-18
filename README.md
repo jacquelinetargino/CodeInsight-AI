@@ -282,7 +282,8 @@ Veja também [backend/README.md](backend/README.md) e [frontend/README.md](front
   parsing sem avaliar; a de JS/TS é textual
 - O tarball baixado é tratado como hostil: limite de bytes durante o download, recusa de
   caminhos que escapam do destino, symlinks descartados, teto de arquivos e de tamanho
-  descomprimido, e allowlist de hosts para evitar SSRF
+  descomprimido, e allowlist de hosts **e de esquema** (só https) para evitar SSRF e
+  evitar que a credencial do download saia em texto claro
 - Conteúdo de arquivo sensível nunca é lido nem reportado: o achado traz o caminho, que é
   o que se precisa para agir
 - Evidência de credencial já vem mascarada do detector — o valor real não chega ao banco
