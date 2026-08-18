@@ -13,8 +13,11 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
+import httpx
+
 from app.ai.factory import get_optional_ai_provider
 from app.core.database import AsyncSessionLocal
+from app.core.errors import FalhaVisivelAoUsuario
 from app.core.security import decrypt_secret
 from app.engine.pipeline import EngineReport, analyze_repository
 from app.models.analysis import Analysis, AnalysisResult
@@ -23,6 +26,56 @@ from app.models.repository import Repository
 from app.services import analysis_service, github_service
 
 logger = logging.getLogger(__name__)
+
+
+ERRO_INTERNO = (
+    "A análise falhou por um erro interno do servidor. O detalhe ficou "
+    "registrado no log. Tente de novo em alguns minutos."
+)
+
+
+def _mensagem_para_o_usuario(exc: Exception) -> str:
+    """O que gravar em `Analysis.error_message`, que a API devolve e a página da
+    análise mostra.
+
+    Só passa a mensagem que foi escrita para ser lida — ver
+    `app.core.errors.FalhaVisivelAoUsuario`. `str(exc)` de qualquer exceção
+    entregava outra coisa: um `FileNotFoundError` do motor levava o caminho do
+    diretório temporário e o nome da conta do servidor até a tela, e um
+    `KeyError` chegava como `'chave_que_nao_existe'`, que não ajuda ninguém.
+
+    O detalhe não se perde: quem chama isto já registrou a exceção inteira com
+    `logger.exception`.
+    """
+    if isinstance(exc, FalhaVisivelAoUsuario):
+        return str(exc)[:2000]
+    if isinstance(exc, httpx.HTTPStatusError):
+        return _mensagem_do_github(exc)
+    return ERRO_INTERNO
+
+
+def _mensagem_do_github(exc: httpx.HTTPStatusError) -> str:
+    """A GitHub API é a única dependência externa da análise, e a razão da recusa
+    é acionável por quem pediu — vale traduzir em vez de esconder.
+
+    O texto do httpx não serve como está: ele traz a URL chamada, o que expõe o
+    caminho interno da integração sem dizer o que fazer.
+    """
+    status_code = exc.response.status_code
+    if status_code == 404:
+        return (
+            "O GitHub não encontrou este repositório. Ele pode ter sido removido, "
+            "renomeado, ou ser privado — neste caso, conecte um token do GitHub "
+            "com acesso a ele em Configurações."
+        )
+    if status_code in (401, 403):
+        return (
+            "O GitHub recusou o acesso a este repositório. Se ele é privado, "
+            "verifique se o token conectado ainda é válido e tem permissão de leitura."
+        )
+    if status_code == 429:
+        return "O GitHub aplicou limite de requisições. Tente de novo em alguns minutos."
+    return f"O GitHub respondeu {status_code} e a análise não pôde continuar."
 
 
 def _summary(resultado, dimensao: Dimension) -> str:
@@ -95,7 +148,7 @@ async def run_repository_analysis(analysis_id: uuid.UUID) -> None:
                 # Repositório removido entre o enfileiramento e a execução.
                 # Sem isto, a linha seguinte quebraria com AttributeError e o
                 # usuário veria "NoneType" em vez do que de fato aconteceu.
-                raise RuntimeError(
+                raise FalhaVisivelAoUsuario(
                     "O repositório desta análise não existe mais. Cadastre-o novamente."
                 )
 
@@ -136,7 +189,7 @@ async def run_repository_analysis(analysis_id: uuid.UUID) -> None:
         except Exception as exc:  # noqa: BLE001
             logger.exception("Falha ao analisar repositório %s", analysis_id)
             analysis.status = AnalysisStatus.FAILED
-            analysis.error_message = str(exc)[:2000]
+            analysis.error_message = _mensagem_para_o_usuario(exc)
             analysis.finished_at = datetime.now(UTC)
             await db.commit()
 
