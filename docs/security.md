@@ -97,8 +97,27 @@ armazenamento compartilhado.
 ## Validação de entrada
 
 Todo body de request é validado via Pydantic antes de chegar à lógica de negócio.
-Referências de repositório (`owner/repo` ou URL) passam por uma regex estrita
-(`github_service.resolve_repo_full_name`) antes de qualquer chamada à GitHub API.
+
+**Tudo que vira segmento de caminho de uma URL da GitHub API é validado antes.** É a
+mesma classe de defeito duas vezes: a requisição sai com `Authorization: Bearer` — o PAT
+do usuário ou, quando ele não conectou nenhum, o `GITHUB_TOKEN` do servidor — e o httpx
+normaliza `..` no momento em que constrói a URL, então um segmento a mais troca o
+endpoint chamado sem que o código pareça errado.
+
+| entrada | validada por | o que escapava |
+| --- | --- | --- |
+| referência do repositório | `resolve_repo_full_name` (regex) | `../user` alcançava `/user` |
+| `file_path` de `POST /analysis/{id}/fix` | `_validate_repo_file_path` | `../../../vitima/privado/contents/.env` lia outro repositório |
+
+O caso do `file_path` era o mais grave dos dois: o conteúdo volta em base64, é
+decodificado e segue para o provedor de IA como contexto da correção, que o usuário lê.
+Com `GITHUB_TOKEN` configurado no servidor, qualquer usuário autenticado lia qualquer
+repositório que aquele token alcança, inclusive privado.
+
+Abaixo das duas validações há uma rede geral em `github_service._get`: ele recusa
+qualquer caminho que a montagem da URL reescreva. Ela existe para a chamada que alguém
+acrescentar amanhã sem lembrar deste problema — que foi exatamente como o segundo caso
+apareceu depois do primeiro ter sido corrigido.
 
 ## Mensagens de erro
 

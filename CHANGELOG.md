@@ -9,6 +9,20 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ### Corrigido
 
+- **`file_path` de `POST /analysis/{id}/fix` escapava do repositório.** Mesma classe do
+  PR 35, por outra porta: o campo entra no caminho de uma URL da GitHub API e o httpx
+  normaliza `..` ao construir a URL. Medido, interceptando a requisição real,
+  `../../../vitima/repo-privado/contents/.env` virava
+  `https://api.github.com/repos/vitima/repo-privado/contents/.env` — com o PAT do
+  usuário ou, na falta dele, o `GITHUB_TOKEN` do servidor. O conteúdo volta em base64, é
+  decodificado e segue para o provedor de IA como contexto da correção, que o usuário
+  lê: com token de servidor configurado, qualquer usuário autenticado lia qualquer
+  repositório que aquele token alcança, inclusive privado. `?` escapava por outro
+  caminho, encerrando o segmento e virando query string. Corrigido com validação na
+  entrada e, abaixo dela, uma rede em `_get` que recusa qualquer caminho reescrito ao
+  montar a URL — porque validar só a entrada de hoje foi o que deixou este caso passar
+  depois do PR 35.
+
 - **A análise falhada devolvia a exceção crua ao usuário.** `Analysis.error_message`
   recebia `str(exc)` de qualquer exceção e é renderizado na página da análise. Medido:
   um `FileNotFoundError` do motor entregava `C:\Users\<conta>\AppData\Local\Temp\codeinsight-a1b2c3\src\...`
