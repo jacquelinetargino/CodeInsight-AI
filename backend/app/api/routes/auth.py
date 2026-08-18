@@ -4,7 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.limiter import limiter
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import (
+    create_access_token,
+    dummy_password_hash,
+    hash_password,
+    verify_password,
+)
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import TokenResponse, UserCreate, UserLogin, UserRead
@@ -40,7 +45,16 @@ async def login(
 ) -> TokenResponse:
     users = UserRepository(db)
     user = await users.get_by_email(payload.email)
-    if user is None or not verify_password(payload.password, user.hashed_password):
+
+    # A conferência acontece nos dois casos, inclusive quando o e-mail não
+    # existe: o custo do bcrypt é o que iguala os tempos de resposta. Escrever
+    # `user is None or not verify_password(...)` curto-circuitava e devolvia o
+    # 401 do e-mail desconhecido em 0,9 ms contra 213 ms do cadastrado — ver
+    # `dummy_password_hash`.
+    hash_conferido = user.hashed_password if user is not None else dummy_password_hash()
+    senha_confere = verify_password(payload.password, hash_conferido)
+
+    if user is None or not senha_confere:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-mail ou senha inválidos")
     if not user.is_active:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Usuário desativado")
