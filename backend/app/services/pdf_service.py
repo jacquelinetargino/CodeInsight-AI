@@ -26,7 +26,15 @@ DIMENSION_LABELS = {
 }
 
 
-def render_analysis_pdf(analysis: Analysis, repository_full_name: str) -> bytes:
+def render_report_html(analysis: Analysis, repository_full_name: str) -> str:
+    """Monta o HTML do relatório.
+
+    Separado da conversão para PDF porque é aqui que fica a fronteira de
+    escape: título, descrição, evidência e caminho de arquivo vêm do
+    repositório analisado, que é dado não confiável. `autoescape=True` no
+    ambiente Jinja é o que impede esse conteúdo de virar markup — e com a
+    conversão embutida não havia como um teste observar isso.
+    """
     template = _env.get_template("report.html")
 
     results = [
@@ -39,7 +47,7 @@ def render_analysis_pdf(analysis: Analysis, repository_full_name: str) -> bytes:
         for r in sorted(analysis.results, key=lambda r: r.dimension.value)
     ]
 
-    html_content = template.render(
+    return template.render(
         repository_full_name=repository_full_name,
         generated_at=datetime.now().strftime("%d/%m/%Y %H:%M"),
         overall_score=analysis.overall_score or 0,
@@ -49,6 +57,10 @@ def render_analysis_pdf(analysis: Analysis, repository_full_name: str) -> bytes:
             for s in analysis.suggestions
         ],
     )
+
+
+def render_analysis_pdf(analysis: Analysis, repository_full_name: str) -> bytes:
+    html_content = render_report_html(analysis, repository_full_name)
 
     buffer = BytesIO()
     result = pisa.CreatePDF(html_content, dest=buffer)
