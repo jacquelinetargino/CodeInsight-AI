@@ -7,6 +7,8 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [0.3.4] — Autenticação, mensagens de erro e a terceira porta do mesmo escape
+
 ### Corrigido
 
 - **O teste que garante que o relatório não avalia template dava alarme falso.** Ele

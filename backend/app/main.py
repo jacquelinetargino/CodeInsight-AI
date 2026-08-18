@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from app import __version__
 from app.api.routes import analysis, auth, dashboard, reports, repos
 from app.api.routes import settings as settings_routes
 from app.core.config import get_settings
@@ -10,7 +11,7 @@ from app.core.limiter import limiter
 
 settings = get_settings()
 
-app = FastAPI(title=settings.app_name, version="0.1.0")
+app = FastAPI(title=settings.app_name, version=__version__)
 app.state.limiter = limiter
 # O handler do slowapi recebe `RateLimitExceeded`; o Starlette tipa o parâmetro
 # como `Exception`. É incompatibilidade entre as duas bibliotecas, não erro

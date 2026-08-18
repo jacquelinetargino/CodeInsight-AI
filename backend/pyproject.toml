@@ -1,6 +1,6 @@
 [project]
 name = "codeinsight-backend"
-version = "0.1.0"
+version = "0.3.4"
 requires-python = ">=3.12,<3.13"
 # Espelha requirements.txt (usado pelo Dockerfile/pip local) — o build da
 # FastAPI Cloud usa uv e lê as dependências daqui, não do requirements.txt.
