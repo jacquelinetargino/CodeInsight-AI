@@ -119,6 +119,34 @@ qualquer caminho que a montagem da URL reescreva. Ela existe para a chamada que 
 acrescentar amanhã sem lembrar deste problema — que foi exatamente como o segundo caso
 apareceu depois do primeiro ter sido corrigido.
 
+## Download do tarball
+
+O tarball da GitHub API redireciona para outro host, e o download segue os saltos
+manualmente (o httpx roda com `follow_redirects=False` ali). Cada salto passa por
+`_assert_destino_permitido`, que confere **host e esquema**:
+
+- host em `{api.github.com, codeload.github.com, objects.githubusercontent.com}`;
+- esquema `https`, sempre.
+
+A checagem de esquema foi acrescentada depois. Só o host era conferido, e um
+redirecionamento para `http://codeload.github.com/...` passava — medido, o
+`Authorization: Bearer` ia junto, em texto claro. Quem controla esse redirecionamento é
+o próprio GitHub, então não era um buraco alcançável por um usuário da aplicação; era a
+checagem que faltava para a garantia ser a que o módulo diz ter.
+
+**O header de credencial é reenviado em todos os saltos, de propósito, e isso não
+mudou.** O httpx, quando segue redirecionamento sozinho, remove o `Authorization` ao
+trocar de origem — o laço manual daqui não remove. Manter o comportamento é uma decisão
+com razão declarada: os três hosts permitidos são do GitHub, e não dá para verificar sem
+um repositório privado de teste se o `codeload` precisa do token para entregar o tarball
+de um repositório privado. Remover o header sem essa verificação arriscaria quebrar a
+análise de repositório privado para ganhar pouco. Fica registrado como pendência com
+critério: **medir primeiro, mudar depois.**
+
+O caminho da URL também é conferido (`_assert_caminho_nao_reescrito`), pela mesma razão
+descrita em "Validação de entrada" — é o terceiro lugar em que `..` num segmento trocaria
+o endpoint chamado.
+
 ## Mensagens de erro
 
 `Analysis.error_message` é devolvido por `GET /analysis/{id}` e mostrado na página da
