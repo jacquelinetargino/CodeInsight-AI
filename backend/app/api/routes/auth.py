@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.core.limiter import limiter
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
@@ -12,7 +13,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+@limiter.limit("5/minute")
+async def register(
+    request: Request, payload: UserCreate, db: AsyncSession = Depends(get_db)
+) -> TokenResponse:
     users = UserRepository(db)
     if await users.get_by_email(payload.email) is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "E-mail já cadastrado")
@@ -30,7 +34,10 @@ async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)) -> T
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+@limiter.limit("10/minute")
+async def login(
+    request: Request, payload: UserLogin, db: AsyncSession = Depends(get_db)
+) -> TokenResponse:
     users = UserRepository(db)
     user = await users.get_by_email(payload.email)
     if user is None or not verify_password(payload.password, user.hashed_password):
