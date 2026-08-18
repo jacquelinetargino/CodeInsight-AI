@@ -9,6 +9,17 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ### Corrigido
 
+- **O teste que garante que o relatório não avalia template dava alarme falso.** Ele
+  procura no documento inteiro o resultado que o payload produziria se fosse executado,
+  e a sentinela de `{{ 7*7 }}` era `"49"` — que também é o minuto da data de geração
+  carimbada no rodapé. Às 22:49 a suíte reprovou a main acusando avaliação de template
+  que não houve. `"Config"`, sentinela de `{{ config }}`, tinha o mesmo defeito latente:
+  é prefixo de "Configuração", o rótulo da dimensão CONFIGURATION, e só passava porque o
+  relatório de teste tem uma dimensão só. As sentinelas passaram a ser valores que nada
+  mais no relatório produz, e dois testes novos impedem a repetição. A capacidade de
+  detecção não mudou: reintroduzindo a avaliação de propósito, os três payloads
+  continuam sendo pegos.
+
 - **O download do tarball aceitava redirecionamento para `http://`.** A allowlist conferia
   o host e não o esquema, então `http://codeload.github.com/...` passava — e a requisição
   leva `Authorization: Bearer` em todos os saltos, medido saindo em texto claro. Quem
