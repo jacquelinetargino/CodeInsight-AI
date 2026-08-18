@@ -100,6 +100,28 @@ Todo body de request é validado via Pydantic antes de chegar à lógica de neg�
 Referências de repositório (`owner/repo` ou URL) passam por uma regex estrita
 (`github_service.resolve_repo_full_name`) antes de qualquer chamada à GitHub API.
 
+## Mensagens de erro
+
+`Analysis.error_message` é devolvido por `GET /analysis/{id}` e mostrado na página da
+análise. Ele só recebe mensagem **escrita para ser lida** — na prática, exceção que
+herda de `app.core.errors.FalhaVisivelAoUsuario` (aquisição, tamanho, timeout) e recusa
+da GitHub API, esta traduzida por status. Qualquer outra exceção vira um texto genérico,
+e o detalhe inteiro fica no log via `logger.exception`.
+
+Antes disso o campo recebia `str(exc)` de qualquer exceção. Medido:
+
+| exceção | o que chegava à tela |
+| --- | --- |
+| `FileNotFoundError` | `[Errno 2] ... 'C:\Users\<conta>\AppData\Local\Temp\codeinsight-a1b2c3\src\repo\x.py'` |
+| `KeyError` | `'chave_que_nao_existe'` |
+| `HTTPStatusError` | `Client error '404 Not Found' for url 'https://api.github.com/repos/...'` |
+
+Dois problemas juntos: o caminho do diretório temporário e a conta que roda o servidor
+saíam para quem pedisse a análise, e — como mensagem de erro de sistema de arquivos
+carrega o nome do arquivo — o **repositório analisado**, que é conteúdo não confiável,
+escolhia parte do texto exibido. Não chegava a ser XSS (o React escapa na renderização),
+mas era conteúdo de terceiro alcançando a interface por um caminho não desenhado.
+
 ## Isolamento entre usuários
 
 Toda rota que acessa um recurso específico (repositório, análise) verifica
