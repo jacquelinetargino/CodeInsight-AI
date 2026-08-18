@@ -35,10 +35,26 @@ PAYLOADS_HTML = {
 # que `{{ 7*7 }}` suma do HTML testaria o oposto do que importa. `{` e `%` não
 # são especiais em HTML, então o autoescape corretamente não os toca — o que
 # não pode acontecer é o Jinja avaliá-los.
+#
+# O segundo item de cada par é procurado no documento INTEIRO, então ele precisa
+# ser um valor que não possa aparecer por outro motivo. Os dois primeiros
+# sentinelas eram curtos demais e colidiam:
+#
+#   "49"     -> o relatório carimba a data de geração, e às 22:49 o teste
+#               falhou na main com "o template avaliou o conteúdo". Duas horas
+#               por dia o teste acusava um problema que não existia.
+#   "Config" -> é prefixo de "Configuração", o rótulo da dimensão CONFIGURATION.
+#               Passava só porque o relatório de teste tem uma dimensão só.
+#
+# Um teste de segurança que dá alarme falso é pior do que nenhum: da próxima vez
+# que ele apontar algo de verdade, ninguém vai acreditar.
 PAYLOADS_TEMPLATE = {
-    "expressao": ("{{ 7*7 }}", "49"),
-    "bloco": ("{% for x in range(9) %}X{% endfor %}", "XXXXXXXXX"),
-    "config": ("{{ config }}", "Config"),
+    # 31337 * 1337 = 41897569, oito dígitos que nada mais no relatório produz.
+    "expressao": ("{{ 31337 * 1337 }}", "41897569"),
+    "bloco": ("{% for _ in range(9) %}INJETADO{% endfor %}", "INJETADO" * 9),
+    # `{{ config }}` renderizaria o repr do objeto de configuração do Jinja, que
+    # começa com "<Config " — com o espaço, que "Configuração" não tem.
+    "config": ("{{ config }}", "<Config "),
 }
 
 
@@ -117,6 +133,38 @@ def test_sintaxe_de_template_e_dado_e_nao_codigo(nome, caso):
 
     assert payload in html, f"{nome}: o payload deveria aparecer literal, como texto"
     assert efeito_se_avaliasse not in html, f"{nome}: o template avaliou o conteúdo"
+
+
+def test_os_sentinelas_nao_aparecem_num_relatorio_inofensivo():
+    """Cada sentinela é procurada no documento inteiro, então precisa ser um
+    valor que só a avaliação do template possa produzir.
+
+    Foi por não conferir isso que o teste acima acusou um problema inexistente:
+    `"49"` também é o minuto da data de geração carimbada no rodapé.
+    """
+    html = render_report_html(_analise_com("conteúdo inofensivo"), repository_full_name="dono/repo")
+
+    for nome, (_, sentinela) in PAYLOADS_TEMPLATE.items():
+        assert sentinela not in html, (
+            f"{nome}: a sentinela {sentinela!r} aparece num relatório sem payload nenhum "
+            "— o teste acusaria avaliação de template que não houve"
+        )
+
+
+@pytest.mark.parametrize("nome,caso", PAYLOADS_TEMPLATE.items())
+def test_a_sentinela_e_improvavel_o_bastante(nome, caso):
+    """Regra de bolso, não prova: sentinela curta colide com o conteúdo normal
+    do relatório mais cedo ou mais tarde.
+
+    O teste acima cobre o relatório de hoje; este cobre o de amanhã, quando
+    alguém acrescentar um número, um rótulo ou um rodapé novo. As duas que
+    quebraram tinham 2 e 6 caracteres.
+    """
+    _, sentinela = caso
+    assert len(sentinela) >= 8, (
+        f"{nome}: a sentinela {sentinela!r} é curta demais para ser procurada no "
+        "documento inteiro sem risco de alarme falso"
+    )
 
 
 def test_o_nome_do_repositorio_tambem_e_escapado():
