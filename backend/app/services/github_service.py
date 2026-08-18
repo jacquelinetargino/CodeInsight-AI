@@ -95,6 +95,10 @@ class InvalidRepositoryReferenceError(GithubAPIError):
     pass
 
 
+class InvalidFilePathError(GithubAPIError):
+    """Caminho de arquivo que não pode virar segmento de URL da GitHub API."""
+
+
 def resolve_repo_full_name(repo_input: str) -> str:
     """Aceita 'owner/repo' ou uma URL do GitHub e retorna sempre 'owner/repo'."""
     value = repo_input.strip()
@@ -132,9 +136,33 @@ def _headers(access_token: str | None) -> dict[str, str]:
     return headers
 
 
+def _assert_path_not_normalized(path: str) -> None:
+    """Recusa qualquer caminho que a montagem da URL reescreva.
+
+    Todo `path` daqui é montado com f-string a partir de valores que, em algum
+    ponto, vieram do usuário. O httpx normaliza `..` no momento em que a `URL` é
+    construída, então um segmento a mais no lugar errado troca o endpoint
+    chamado sem que nada no código pareça errado:
+
+        /repos/dono/repo/contents/../../../vitima/privado/contents/.env
+        -> /repos/vitima/privado/contents/.env
+
+    Cada entrada tem sua própria validação (`resolve_repo_full_name`,
+    `_validate_repo_file_path`). Esta checagem é a rede embaixo delas: vale para
+    o `_get` inteiro, inclusive para a chamada que alguém acrescentar amanhã sem
+    lembrar deste problema.
+    """
+    if httpx.URL(f"{GITHUB_API_BASE}{path}").path != path:
+        raise InvalidFilePathError(
+            "O caminho da requisição foi reescrito ao montar a URL, o que mudaria "
+            "qual endpoint da GitHub API é chamado. Recusado por segurança."
+        )
+
+
 async def _get(
     path: str, access_token: str | None, params: dict[str, Any] | None = None
 ) -> httpx.Response:
+    _assert_path_not_normalized(path)
     # follow_redirects: um repositório renomeado responde 301 para o caminho
     # novo. Sem seguir, a análise de qualquer repositório que já mudou de nome
     # falhava inteira — e renomear repositório é comum.
@@ -237,7 +265,63 @@ async def get_file_tree(
     return resp.json().get("tree", [])
 
 
+# Caminho de arquivo dentro do repositório. Vem de `POST /analysis/{id}/fix`,
+# onde o front reenvia o `file_path` do achado — ou seja, é entrada de usuário
+# que entra direto no CAMINHO de uma URL da GitHub API, com o token do servidor
+# como credencial quando o usuário não conectou PAT próprio.
+#
+# Sem validação, era o mesmo escape do PR 35 por outra porta. Medido,
+# interceptando a requisição real:
+#
+#     file_path = "../../../vitima/repo-privado/contents/.env"
+#     -> https://api.github.com/repos/vitima/repo-privado/contents/.env
+#
+# O conteúdo volta em base64, é decodificado e segue para o provedor de IA como
+# contexto da correção — que o usuário lê. Com `GITHUB_TOKEN` configurado no
+# servidor, qualquer usuário autenticado lia qualquer repositório que aquele
+# token alcança, inclusive privado.
+#
+# `?` também escapava, por outro caminho: ele encerra o segmento de caminho e o
+# resto vira query string.
+_CARACTERES_PROIBIDOS_NO_CAMINHO = frozenset(r'?#%\:@"<>|*')
+
+# O Git não versiona diretório, então o caminho de um arquivo tem no máximo o
+# tamanho que o próprio Git aceita numa entrada de índice.
+MAX_FILE_PATH_LENGTH = 4096
+
+
+def _validate_repo_file_path(path: str) -> str:
+    """Confere que o caminho é mesmo um caminho de arquivo dentro do repositório.
+
+    Recusar é seguro: nenhuma das formas abaixo nomeia um arquivo que o GitHub
+    possa entregar, então nada legítimo se perde.
+    """
+    if not path or not path.strip():
+        raise InvalidFilePathError("Caminho de arquivo vazio.")
+    if len(path) > MAX_FILE_PATH_LENGTH:
+        raise InvalidFilePathError(
+            f"Caminho de arquivo com mais de {MAX_FILE_PATH_LENGTH} caracteres."
+        )
+    if any(c in _CARACTERES_PROIBIDOS_NO_CAMINHO or ord(c) < 32 for c in path):
+        raise InvalidFilePathError(
+            "O caminho do arquivo tem caractere que não pode aparecer num caminho "
+            "de repositório."
+        )
+    if path.startswith("/"):
+        raise InvalidFilePathError(
+            "O caminho do arquivo é relativo à raiz do repositório e não pode " "começar com '/'."
+        )
+    partes = path.split("/")
+    if any(parte in ("", ".", "..") for parte in partes):
+        # "" cobre "a//b" e a barra no fim; "." e ".." são navegação, não nome.
+        raise InvalidFilePathError(
+            "O caminho do arquivo não pode conter '.', '..' nem segmento vazio."
+        )
+    return path
+
+
 async def get_file_content(access_token: str | None, full_name: str, path: str) -> str | None:
+    _validate_repo_file_path(path)
     resp = await _get(f"/repos/{full_name}/contents/{path}", access_token)
     if resp.status_code != 200:
         return None
@@ -266,7 +350,14 @@ async def collect_repository_context(
 
     contents: dict[str, str] = {}
     for path in selected:
-        content = await get_file_content(access_token, full_name, path)
+        try:
+            content = await get_file_content(access_token, full_name, path)
+        except InvalidFilePathError:
+            # Os caminhos aqui vêm da árvore do repositório analisado, que é
+            # conteúdo não confiável. Um nome esquisito faz pular aquele arquivo
+            # — derrubar a coleta inteira por causa de um seria desproporcional.
+            logger.warning("Caminho de arquivo recusado em %s: %r", full_name, path)
+            continue
         if content is not None:
             contents[path] = content[:MAX_FILE_SIZE_BYTES]
 

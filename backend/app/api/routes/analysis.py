@@ -163,9 +163,17 @@ async def request_finding_fix(
 
     file_content = None
     if payload.file_path:
-        file_content = await github_service.get_file_content(
-            access_token, analysis.repository.full_name, payload.file_path
-        )
+        # O `file_path` chega do front, que o reenvia a partir do achado. Ele
+        # entra no CAMINHO de uma URL da GitHub API e a requisição sai com o
+        # token do servidor quando o usuário não tem PAT próprio — a validação
+        # está em `get_file_content`, e o 400 aqui evita que uma entrada
+        # recusada vire 500.
+        try:
+            file_content = await github_service.get_file_content(
+                access_token, analysis.repository.full_name, payload.file_path
+            )
+        except github_service.InvalidFilePathError as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
 
     fix_row = await analysis_service.generate_and_persist_fix(
         db,

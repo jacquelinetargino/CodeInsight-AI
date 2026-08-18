@@ -35,6 +35,8 @@ Este é um projeto de portfólio educacional. Ainda assim, levamos a sério rela
 - Rate limiting nos endpoints mais sensíveis (criação de análise, solicitação de correção)
   e nos dois abertos ao público (login, cadastro)
 - O tempo de resposta do login não revela se o e-mail está cadastrado
+- Toda entrada que vira caminho de URL da GitHub API é validada antes: a requisição sai
+  com credencial e um segmento a mais trocaria o endpoint chamado
 - CORS restrito ao domínio configurado do frontend
 - Nenhum código enviado/analisado é executado pelo backend — o conteúdo dos arquivos é
   tratado sempre como texto, tanto na coleta quanto no envio para o provedor de IA
