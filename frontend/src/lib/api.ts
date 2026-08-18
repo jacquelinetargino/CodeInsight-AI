@@ -29,6 +29,13 @@ interface PydanticValidationError {
 }
 
 function extractErrorMessage(body: unknown, status: number): string {
+  // O slowapi responde 429 com `{ error: "Rate limit exceeded: ..." }`, e não
+  // com o `detail` do FastAPI — o texto cru também não diz o que fazer. Sem
+  // este caso, quem errasse a senha dez vezes via só "Erro 429".
+  if (status === 429) {
+    return "Tentativas demais em pouco tempo. Espere um minuto e tente de novo.";
+  }
+
   const detail = (body as { detail?: unknown } | null)?.detail;
 
   if (typeof detail === "string") return detail;

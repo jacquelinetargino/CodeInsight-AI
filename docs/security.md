@@ -7,7 +7,22 @@ na raiz. Esta página documenta as decisões técnicas.
 
 - Hash com `bcrypt` via `passlib` (`app/core/security.py::hash_password`/`verify_password`).
 - Senha mínima de 8 caracteres, validada no schema `UserCreate`.
+- **Máximo de 72 bytes**, também no `UserCreate`. O bcrypt só considera os primeiros
+  72 bytes e descarta o resto sem avisar: medido, `"A"*72 + "sufixo-ignorado"` casa com
+  o hash de `"A"*72`. O teto anterior era de 128 caracteres, ou seja, prometia uma
+  força que o algoritmo não entregava. A contagem é em **bytes**, não em caracteres —
+  40 caracteres acentuados passam de 72 bytes em UTF-8.
+  O limite vale só no cadastro: contas criadas antes dele continuam entrando, porque a
+  conferência trunca do mesmo jeito que o cadastro truncou.
 - Nunca logadas, nunca retornadas em nenhuma resposta da API.
+- **O tempo de resposta do login não distingue e-mail cadastrado de desconhecido.** A
+  conferência do bcrypt roda nos dois casos, contra um hash descartável quando o e-mail
+  não existe (`security.dummy_password_hash`). Sem isso o `or` curto-circuitava e o
+  login virava um oráculo de "esta pessoa tem conta aqui": medido, 213 ms para e-mail
+  cadastrado contra 0,9 ms para desconhecido.
+  Isso trata só o canal de tempo. `POST /auth/register` continua respondendo 409 para
+  e-mail já cadastrado, o que também identifica quem tem conta — mudar isso exigiria
+  confirmação por e-mail, que o projeto não tem.
 
 ## Tokens (JWT)
 
@@ -52,9 +67,23 @@ necessário, já que a autenticação não usa cookies.
 
 ## Rate limiting
 
-`slowapi` limita `POST /analysis` (10/min/IP) e `POST /analysis/{id}/fix` (20/min/IP) —
-os dois endpoints que disparam chamadas custosas (e potencialmente caras) ao provedor
-de IA.
+`slowapi` limita:
+
+| Rota | Limite | Por que |
+| --- | --- | --- |
+| `POST /analysis` | 10/min/IP | dispara chamadas custosas ao provedor de IA |
+| `POST /analysis/{id}/fix` | 20/min/IP | idem, uma correção por achado |
+| `POST /auth/login` | 10/min/IP | adivinhação de senha |
+| `POST /auth/register` | 5/min/IP | criação de contas em massa |
+
+O limite do login não é orçamento de custo. Antes dele, 60 tentativas seguidas contra a
+mesma conta responderam 401 e nenhuma 429 — adivinhar senha era só uma questão de tempo.
+Cada tentativa contra uma conta existente também custa ~210 ms de CPU do servidor (o
+bcrypt), então a rota servia de alavanca de exaustão sem exigir credencial nenhuma.
+
+**O que o limite do login não resolve:** a chave é o IP. Um atacante distribuído continua
+tendo 10 tentativas por minuto *por endereço*, e não há bloqueio por conta — isso exigiria
+contagem compartilhada, pela mesma razão descrita no parágrafo da memória do processo.
 
 O limitador usa `key_style="endpoint"`. O padrão do `slowapi` é `"url"`, que põe o
 **caminho concreto** no balde: numa rota com id variável isso dá um orçamento inteiro por

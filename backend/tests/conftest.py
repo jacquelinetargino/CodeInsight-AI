@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.ai.base import AIProvider
 from app.api.routes.analysis import require_ai_provider
 from app.core.database import Base, get_db
+from app.core.limiter import limiter
 from app.core.security import create_access_token, hash_password
 from app.main import app
 from app.models.user import User
@@ -102,6 +103,21 @@ async def _prepare_schema(conn) -> None:
             f"Schema efetivo é {current!r}, esperado {TEST_SCHEMA!r}. Abortando "
             "antes de qualquer DDL para não afetar o schema errado."
         )
+
+
+@pytest.fixture(autouse=True)
+def limitador_zerado():
+    """O limitador conta em memória, global ao processo — o balde sobrevive de um
+    teste para o outro. Sem zerar, um teste que faz login gasta orçamento do
+    seguinte e a suíte passa a depender da ordem em que roda.
+
+    Isso ficou concreto quando `POST /auth/register` ganhou limite de 5/minuto:
+    a suíte já fazia 4 registros. O quinto teste a registrar um usuário, em
+    qualquer arquivo, começaria a receber 429 sem ter nada a ver com o que
+    testa."""
+    limiter.reset()
+    yield
+    limiter.reset()
 
 
 @pytest_asyncio.fixture

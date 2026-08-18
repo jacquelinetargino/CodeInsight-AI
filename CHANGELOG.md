@@ -7,6 +7,44 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+### Corrigido
+
+- **As rotas de autenticação não tinham limite de taxa.** Medido: 60 tentativas de senha
+  seguidas contra a mesma conta responderam 401 e nenhuma 429 — adivinhar senha era só
+  uma questão de tempo. Cada tentativa contra uma conta existente ainda custa ~210 ms de
+  CPU do servidor (o bcrypt), então a rota também servia de alavanca de exaustão sem
+  exigir credencial nenhuma. `POST /auth/login` passa a 10/min/IP e `POST /auth/register`
+  a 5/min/IP. O limite é por IP: um atacante distribuído não é barrado por ele, e isso
+  está registrado em `docs/security.md` em vez de subentendido.
+- **O tempo de resposta do login dizia quem tem conta.** E-mail cadastrado respondia em
+  213 ms e desconhecido em 0,9 ms — 236× de diferença, porque o `or` curto-circuitava
+  antes do `verify_password`. A conferência agora roda nos dois casos, contra um hash
+  descartável quando o e-mail não existe.
+- **O cadastro aceitava senha maior do que o bcrypt usa.** O limite era de 128
+  caracteres, mas o algoritmo só considera os primeiros 72 **bytes** e descarta o resto
+  em silêncio: `"A"*72 + "sufixo-ignorado"` casa com o hash de `"A"*72`. Quem escolhesse
+  uma frase-senha de 100 caracteres tinha 72 protegendo a conta e 28 decorativos. O teto
+  passa a ser 72 bytes, com mensagem explicando o porquê. Vale só no cadastro — contas
+  antigas com senha mais longa continuam entrando.
+- **O 429 chegava ao usuário como "Erro 429".** O `slowapi` responde com
+  `{error: ...}` e não com o `detail` do FastAPI, então o frontend não achava mensagem
+  nenhuma. Passava despercebido enquanto o limite só existia em rotas caras; com o
+  limite no login, quem errasse a senha dez vezes veria só o número.
+
+### Adicionado
+
+- **Conteúdo do repositório analisado não injeta no relatório** (PR 34) — a montagem do
+  HTML do PDF foi separada da conversão, e nome, descrição e evidência de achado passam
+  por escape verificado por teste.
+- **A referência de repositório é validada antes de virar caminho de URL** (PR 35) —
+  `../user` escapava do prefixo `/repos` e alcançava `/user` da GitHub API com o token do
+  servidor. Corrigido e coberto por teste.
+- O limitador é zerado entre testes (`conftest`). A contagem vive na memória do processo
+  e sobrevive de um teste para o outro: com o limite de 5/min no cadastro e 4 registros
+  já existentes na suíte, o próximo teste a registrar um usuário — em qualquer arquivo —
+  passaria a receber 429 sem ter nada a ver com o que testa.
+
+
 ## [0.3.3] — Garantias de segurança viram teste
 
 Auditoria das promessas de `SECURITY.md` contra o que o código realmente garante.

@@ -28,10 +28,13 @@ Este é um projeto de portfólio educacional. Ainda assim, levamos a sério rela
 ## Boas práticas já aplicadas neste projeto
 
 - Nenhuma credencial é versionada — tudo via `.env` (fora do controle de versão)
-- Senhas de usuário: hash bcrypt via `passlib`, nunca texto puro
+- Senhas de usuário: hash bcrypt via `passlib`, nunca texto puro, entre 8 e 72 bytes
+  (o bcrypt ignora o que passa disso, então aceitar mais seria prometer o que não existe)
 - PATs do GitHub: criptografados em repouso (Fernet), nunca logados
 - Autenticação: JWT assinado, validado em toda rota protegida via dependência do FastAPI
 - Rate limiting nos endpoints mais sensíveis (criação de análise, solicitação de correção)
+  e nos dois abertos ao público (login, cadastro)
+- O tempo de resposta do login não revela se o e-mail está cadastrado
 - CORS restrito ao domínio configurado do frontend
 - Nenhum código enviado/analisado é executado pelo backend — o conteúdo dos arquivos é
   tratado sempre como texto, tanto na coleta quanto no envio para o provedor de IA

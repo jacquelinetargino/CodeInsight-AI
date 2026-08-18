@@ -271,7 +271,10 @@ Veja também [backend/README.md](backend/README.md) e [frontend/README.md](front
 - Senhas com hash bcrypt; nunca armazenadas em texto puro
 - PATs do GitHub sempre criptografados em repouso (Fernet)
 - Autenticação via JWT Bearer; rotas protegidas por dependência do FastAPI
-- Rate limiting nos endpoints mais sensíveis (criação de análise, correções)
+- Rate limiting nos endpoints mais sensíveis (criação de análise, correções) e nos dois
+  abertos ao público (login 10/min/IP, cadastro 5/min/IP)
+- O login não vaza quem tem conta: o tempo de resposta é o mesmo para e-mail cadastrado
+  e desconhecido
 - CORS restrito ao domínio do frontend
 - **Nenhum código do repositório analisado é executado.** Não há `subprocess`, `shell`,
   `eval`, `exec`, importação dinâmica, execução de gerenciador de pacotes, script de

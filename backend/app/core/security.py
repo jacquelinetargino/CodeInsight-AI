@@ -1,4 +1,6 @@
+import secrets
 from datetime import UTC, datetime, timedelta
+from functools import lru_cache
 from typing import Any
 
 from cryptography.fernet import Fernet
@@ -18,6 +20,24 @@ def hash_password(raw_password: str) -> str:
 
 def verify_password(raw_password: str, hashed_password: str) -> bool:
     return _pwd_context.verify(raw_password, hashed_password)
+
+
+@lru_cache(maxsize=1)
+def dummy_password_hash() -> str:
+    """Hash de uma senha aleatória, para conferir contra quando o e-mail não
+    existe.
+
+    Sem isso o tempo de resposta do login separa os dois casos: medido, e-mail
+    cadastrado respondia em 213 ms (o custo do bcrypt) e e-mail desconhecido em
+    0,9 ms, porque o `or` curto-circuitava antes do `verify_password`. Uma
+    diferença de 236× é medida pela rede sem esforço nenhum, e transforma o
+    login num oráculo de "esta pessoa tem conta aqui".
+
+    A senha é sorteada em vez de fixa para que nenhuma entrada faça o
+    `verify_password` retornar verdadeiro por acidente. O hash é calculado uma
+    vez por processo (é caro de propósito) e reaproveitado.
+    """
+    return hash_password(secrets.token_urlsafe(32))
 
 
 def create_access_token(subject: str, extra_claims: dict[str, Any] | None = None) -> str:
