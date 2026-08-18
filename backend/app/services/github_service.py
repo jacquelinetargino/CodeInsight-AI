@@ -53,10 +53,38 @@ KEY_FILE_CANDIDATES = [
 MAX_FILES_FETCHED = 25
 MAX_FILE_SIZE_BYTES = 60_000
 
+# Owner e repo entram no CAMINHO de uma URL da GitHub API, e a requisição sai
+# com o token do servidor quando o usuário não tem PAT próprio. Aceitar qualquer
+# coisa sem barra permitia escapar do prefixo `/repos`:
+#
+#     "../user"  ->  https://api.github.com/repos/../user
+#                ->  https://api.github.com/user        (normalizado pelo httpx)
+#
+# ou seja, um usuário autenticado escolhia qual endpoint da GitHub API o
+# servidor chamaria, com a credencial do servidor, e recebia a resposta.
+# `?` no nome do repositório injetava parâmetro de query pelo mesmo caminho.
+#
+# Os padrões abaixo seguem as regras reais do GitHub, então recusar o que sai
+# delas não perde nenhum repositório que possa existir de verdade.
+
+# Conta ou organização. O GitHub documenta apenas alfanumérico e hífen, mas o
+# sublinhado entra aqui de propósito: ele é inofensivo num caminho de URL, e
+# recusá-lo arriscaria rejeitar alguma conta antiga sem ganhar segurança nenhuma.
+# O que precisa ficar de fora é `. / ? # % : @` e caractere de controle.
+_OWNER = r"[A-Za-z0-9_](?:[A-Za-z0-9_-]{0,37}[A-Za-z0-9_])?"
+
+# Repositório: alfanumérico, ponto, hífen e sublinhado, até 100. Ponto no início
+# é legítimo — `.github` é um repositório real e comum.
+_REPO = r"[A-Za-z0-9._-]{1,100}"
+
 _REPO_URL_RE = re.compile(
-    r"^(?:https?://)?(?:www\.)?github\.com/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+?)(?:\.git)?/?$"
+    rf"^(?:https?://)?(?:www\.)?github\.com/(?P<owner>{_OWNER})/(?P<repo>{_REPO}?)(?:\.git)?/?$"
 )
-_OWNER_REPO_RE = re.compile(r"^(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+?)(?:\.git)?$")
+_OWNER_REPO_RE = re.compile(rf"^(?P<owner>{_OWNER})/(?P<repo>{_REPO}?)(?:\.git)?$")
+
+# `.` e `..` casam o padrão de repositório mas são navegação de caminho, não
+# nome. O GitHub também não permite nenhum dos dois.
+_NOMES_DE_CAMINHO = {".", ".."}
 
 
 class GithubAPIError(Exception):
@@ -76,7 +104,14 @@ def resolve_repo_full_name(repo_input: str) -> str:
             f"'{repo_input}' não parece um repositório válido do GitHub "
             "(use 'owner/repo' ou a URL)."
         )
-    return f"{match.group('owner')}/{match.group('repo')}"
+
+    owner, repo = match.group("owner"), match.group("repo")
+    if owner in _NOMES_DE_CAMINHO or repo in _NOMES_DE_CAMINHO:
+        raise InvalidRepositoryReferenceError(
+            f"'{repo_input}' não parece um repositório válido do GitHub "
+            "(use 'owner/repo' ou a URL)."
+        )
+    return f"{owner}/{repo}"
 
 
 def resolve_access_token(user_token: str | None) -> str | None:
