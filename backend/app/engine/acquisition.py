@@ -25,6 +25,7 @@ from pathlib import Path
 import httpx
 
 from app.core.config import get_settings
+from app.core.errors import FalhaVisivelAoUsuario
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +76,12 @@ _WINDOWS_RESERVED = re.compile(
 )
 
 
-class AcquisitionError(Exception):
-    """Falha ao obter o repositório. A mensagem é segura para exibir ao usuário."""
+class AcquisitionError(FalhaVisivelAoUsuario):
+    """Falha ao obter o repositório. A mensagem é segura para exibir ao usuário.
+
+    A herança é o que faz essa promessa valer: sem ela, a mensagem passava pelo
+    mesmo caminho de qualquer `Exception` e a garantia era só um comentário.
+    """
 
 
 class RepositoryTooLargeError(AcquisitionError):

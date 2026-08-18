@@ -16,6 +16,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
+from app.core.errors import FalhaVisivelAoUsuario
 from app.engine.acquisition import acquire_repository
 from app.engine.analyzers import (
     Analyzer,
@@ -37,7 +38,7 @@ from app.engine.scoring import RepositoryScore, score_repository
 logger = logging.getLogger(__name__)
 
 
-class AnalysisTimeoutError(Exception):
+class AnalysisTimeoutError(FalhaVisivelAoUsuario):
     """A análise passou do tempo máximo. Mensagem segura para exibir."""
 
 

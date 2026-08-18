@@ -13,9 +13,11 @@ import contextlib
 import uuid
 from pathlib import Path
 
+import httpx
 import pytest
 
 from app.engine import pipeline
+from app.engine.acquisition import RepositoryTooLargeError
 from app.models.analysis import Analysis, AnalysisResult
 from app.models.enums import AnalysisStatus, Dimension
 from app.models.repository import Repository
@@ -214,10 +216,15 @@ async def test_falha_da_ia_nao_invalida_a_analise(db_session, tmp_path, monkeypa
 
 @pytest.mark.asyncio
 async def test_falha_do_motor_marca_a_analise_como_failed(db_session, tmp_path, monkeypatch):
+    """A mensagem escrita para o usuário chega inteira até ele.
+
+    `RepositoryTooLargeError` é `FalhaVisivelAoUsuario` — o texto foi redigido
+    para ser lido e diz o que aconteceu.
+    """
     analysis = await _cenario(db_session, tmp_path, monkeypatch)
 
     async def acquire_que_falha(*args, **kwargs):
-        raise RuntimeError("repositório grande demais")
+        raise RepositoryTooLargeError("O repositório passou do limite de tamanho.")
 
     monkeypatch.setattr(analysis_tasks, "analyze_repository", acquire_que_falha)
 
@@ -225,7 +232,53 @@ async def test_falha_do_motor_marca_a_analise_como_failed(db_session, tmp_path, 
 
     await db_session.refresh(analysis)
     assert analysis.status is AnalysisStatus.FAILED
-    assert "grande demais" in analysis.error_message
+    assert "passou do limite de tamanho" in analysis.error_message
+
+
+@pytest.mark.asyncio
+async def test_erro_interno_nao_chega_ao_usuario(db_session, tmp_path, monkeypatch):
+    """O outro lado da mesma regra: exceção que não foi escrita para ser lida
+    vira texto genérico, e o caminho do servidor não sai daqui.
+
+    Testar só `_mensagem_para_o_usuario` não bastaria — deixaria passar um
+    caminho que gravasse `error_message` sem consultá-la.
+    """
+    analysis = await _cenario(db_session, tmp_path, monkeypatch)
+    caminho_do_servidor = str(tmp_path / "codeinsight-a1b2c3" / "src" / "repo" / "x.py")
+
+    async def falha_com_caminho(*args, **kwargs):
+        raise FileNotFoundError(2, "No such file or directory", caminho_do_servidor)
+
+    monkeypatch.setattr(analysis_tasks, "analyze_repository", falha_com_caminho)
+
+    await analysis_tasks.run_repository_analysis(analysis.id)
+
+    await db_session.refresh(analysis)
+    assert analysis.status is AnalysisStatus.FAILED
+    assert analysis.error_message == analysis_tasks.ERRO_INTERNO
+    assert caminho_do_servidor not in analysis.error_message
+
+
+@pytest.mark.asyncio
+async def test_recusa_do_github_e_traduzida(db_session, tmp_path, monkeypatch):
+    """404 acontece de verdade — repositório privado sem PAT conectado é o caso
+    mais comum. A mensagem precisa dizer o que fazer, sem citar a URL chamada.
+    """
+    analysis = await _cenario(db_session, tmp_path, monkeypatch)
+
+    async def get_repository_404(access_token, full_name):
+        request = httpx.Request("GET", f"https://api.github.com/repos/{full_name}")
+        response = httpx.Response(404, request=request)
+        response.raise_for_status()
+
+    monkeypatch.setattr(analysis_tasks.github_service, "get_repository", get_repository_404)
+
+    await analysis_tasks.run_repository_analysis(analysis.id)
+
+    await db_session.refresh(analysis)
+    assert analysis.status is AnalysisStatus.FAILED
+    assert "não encontrou" in analysis.error_message
+    assert "api.github.com" not in analysis.error_message
 
 
 @pytest.mark.asyncio

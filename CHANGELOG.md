@@ -9,6 +9,18 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ### Corrigido
 
+- **A análise falhada devolvia a exceção crua ao usuário.** `Analysis.error_message`
+  recebia `str(exc)` de qualquer exceção e é renderizado na página da análise. Medido:
+  um `FileNotFoundError` do motor entregava `C:\Users\<conta>\AppData\Local\Temp\codeinsight-a1b2c3\src\...`
+  — caminho do diretório temporário e nome da conta que roda o servidor; um `KeyError`
+  chegava como `'chave_que_nao_existe'`, que não informa nada. E como mensagem de erro
+  de sistema de arquivos carrega o nome do arquivo, o repositório analisado (conteúdo
+  não confiável) escolhia parte do texto exibido — não era XSS, porque o React escapa,
+  mas era um caminho até a interface que ninguém tinha desenhado. Agora só a mensagem
+  escrita para o usuário passa; o resto vira texto genérico e o detalhe fica no log. A
+  recusa da GitHub API é traduzida por status em vez de escondida: 404 explica que o
+  repositório pode ser privado e como conectar um token.
+
 - **As rotas de autenticação não tinham limite de taxa.** Medido: 60 tentativas de senha
   seguidas contra a mesma conta responderam 401 e nenhuma 429 — adivinhar senha era só
   uma questão de tempo. Cada tentativa contra uma conta existente ainda custa ~210 ms de
