@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.base import AIProvider
+from app.ai.base import AIProvider, AIProviderError
 from app.ai.factory import AIProviderNotConfiguredError, get_ai_provider
 from app.api.deps import get_current_user
 from app.core.database import get_db
@@ -175,16 +175,22 @@ async def request_finding_fix(
         except github_service.InvalidFilePathError as exc:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
 
-    fix_row = await analysis_service.generate_and_persist_fix(
-        db,
-        analysis,
-        title=payload.title,
-        description=payload.description,
-        file_path=payload.file_path,
-        line=payload.line,
-        file_content=file_content,
-        ai_provider=ai_provider,
-    )
+    try:
+        fix_row = await analysis_service.generate_and_persist_fix(
+            db,
+            analysis,
+            title=payload.title,
+            description=payload.description,
+            file_path=payload.file_path,
+            line=payload.line,
+            file_content=file_content,
+            ai_provider=ai_provider,
+        )
+    except AIProviderError as exc:
+        # 502 e não 500: quem falhou foi o serviço a montante, e a distinção
+        # importa para quem lê o log. Antes, uma resposta fora do contrato
+        # chegava ao INSERT e o usuário recebia 500 sem explicação.
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
     await db.commit()
     await db.refresh(fix_row)
     return fix_row
