@@ -7,6 +7,25 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+### Corrigido
+
+- **A resposta do provedor de IA era tratada como contrato validado.** Ela ia direto para
+  o INSERT, e não é garantida por contrato nenhum: o modelo erra sozinho (`"HIGH"` em vez
+  de `"high"` é o caso clássico, e a coluna é um ENUM do Postgres) e o conteúdo do
+  repositório analisado — não confiável — entra no prompt que a produz. Medido, gravando
+  de verdade no Postgres: severidade fora do enum, severidade em caixa alta, título com
+  5000 caracteres, `file_path` com 5000, `description` nula e item que não é objeto,
+  todos derrubando a gravação. O efeito era desproporcional ao defeito: as sugestões vão
+  numa transação só, então **uma** malformada levava junto todas as boas — e como
+  `_enrich_with_ai` engole a exceção de propósito, o usuário via a análise concluída com
+  nenhuma sugestão, sem explicação. Cada item passa a ser normalizado antes de virar
+  linha; o que não tem nada aproveitável é descartado com log e o resto é gravado.
+- **A correção podia ser gravada em branco.** Sem `suggested_code` na resposta, a linha
+  era gravada assim mesmo e a rota devolvia 201 — a interface mostrava uma correção que
+  não existe. Agora responde 502, que é o que de fato aconteceu: o serviço a montante não
+  entregou.
+
+
 ## [0.3.4] — A mesma porta, pela terceira vez
 
 Auditoria continuada dos PRs 28-33. O achado central é uma repetição: **entrada de
