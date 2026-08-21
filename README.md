@@ -257,7 +257,7 @@ CodeInsight-AI/
 │       ├── services/          # Lógica de negócio
 │       ├── ai/                 # Interface AIProvider (OPCIONAL) + factory
 │       ├── tasks/              # Execução em segundo plano
-│       └── prompts/            # Templates de prompt (caminho de IA)
+│       └── prompts/            # Sugestões, correção e README (IA, OPCIONAL)
 ├── docs/                     # Documentação detalhada
 ├── .github/workflows/         # CI/CD
 └── docker-compose.yml

@@ -7,6 +7,21 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+### Removido
+
+- **O caminho de análise por prompt, que não tinha um único chamador.** Antes da
+  migração, cada dimensão era analisada mandando o repositório para o modelo;
+  `run_dimension_analysis`, `persist_dimension_result`, `compute_overall_score`,
+  `DIMENSION_MODULES`, a tabela de pesos espelhada e os seis prompts por dimensão
+  ficaram no lugar depois que o motor assumiu, sem chamador em `app/`, `tests/`, `docs/`
+  ou `frontend/`. Não era código opcional — era código inalcançável, e
+  `persist_dimension_result` ainda carregava o mesmo defeito que o item acima corrigiu.
+  O que ele garantia continua garantido: a divergência entre `Dimension` e
+  `FindingCategory` é pega em `test_engine_scoring.py`, e a média ponderada é a do motor.
+  **Os provedores de IA não foram tocados** — sugestões, correção e geração de README
+  continuam usando o provedor configurado, que é a decisão registrada na 0.3.1.
+- `JSON_OUTPUT_INSTRUCTIONS`, em `prompts/context.py`, que só os prompts removidos usavam.
+
 ### Corrigido
 
 - **A resposta do provedor de IA era tratada como contrato validado.** Ela ia direto para
