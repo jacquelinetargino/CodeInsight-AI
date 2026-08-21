@@ -86,6 +86,20 @@ alembic upgrade head
 Revise sempre a migration gerada antes de commitar — o autogenerate nem sempre
 detecta tudo corretamente (ex.: renomeação de coluna vira drop+add por padrão).
 
+**Esquecer a migration não passa mais despercebido.**
+`tests/test_migrations.py::test_o_schema_das_migrations_e_o_dos_modelos` roda a
+cadeia inteira num schema descartável e compara o resultado com
+`Base.metadata`. Se as duas descrições divergirem, ele falha listando cada
+alteração que faltou virar migration.
+
+Antes desse teste as duas coisas não se falavam: a suíte cria as tabelas com
+`Base.metadata.create_all()` e a produção roda `alembic upgrade head`.
+Acrescentar uma coluna a um modelo sem migration nenhuma passava na suíte
+inteira e no CI — e a produção simplesmente não teria a coluna.
+
+**Nunca edite uma migration já aplicada.** Se o teste acusar divergência, a
+correção é uma migration nova, como foi a `0003`.
+
 ## Adicionando um novo endpoint
 
 1. Modelo (se necessário) em `app/models/` + migration.

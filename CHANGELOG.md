@@ -7,23 +7,24 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
-### Removido
-
-- **O caminho de análise por prompt, que não tinha um único chamador.** Antes da
-  migração, cada dimensão era analisada mandando o repositório para o modelo;
-  `run_dimension_analysis`, `persist_dimension_result`, `compute_overall_score`,
-  `DIMENSION_MODULES`, a tabela de pesos espelhada e os seis prompts por dimensão
-  ficaram no lugar depois que o motor assumiu, sem chamador em `app/`, `tests/`, `docs/`
-  ou `frontend/`. Não era código opcional — era código inalcançável, e
-  `persist_dimension_result` ainda carregava o mesmo defeito que o item acima corrigiu.
-  O que ele garantia continua garantido: a divergência entre `Dimension` e
-  `FindingCategory` é pega em `test_engine_scoring.py`, e a média ponderada é a do motor.
-  **Os provedores de IA não foram tocados** — sugestões, correção e geração de README
-  continuam usando o provedor configurado, que é a decisão registrada na 0.3.1.
-- `JSON_OUTPUT_INSTRUCTIONS`, em `prompts/context.py`, que só os prompts removidos usavam.
-
 ### Corrigido
 
+- **O banco de produção não tinha restrições que os modelos declaram.** Doze colunas
+  eram criadas NULLable pela migration 0001 enquanto o modelo as declara NOT NULL —
+  `created_at` de seis tabelas, `analysis_results.summary` e `.findings`,
+  `repositories.default_branch` e `.private`, e `suggestions.severity`. A causa é a mesma
+  nas doze: na migration, `sa.Column(...)` sem `nullable=` assume `True`; no modelo,
+  `Mapped[datetime]` (e não `datetime | None`) infere `nullable=False`. O efeito era um
+  schema de teste mais estrito que o de produção. Corrigido pela migration 0003, que
+  completa eventuais linhas com NULL usando os mesmos `server_default` já declarados
+  antes de aplicar o `SET NOT NULL` — uma migration que quebra no meio de um deploy por
+  causa de uma linha seria pior do que o problema que conserta.
+- **Nada comparava o schema das migrations com os modelos.** Medido: acrescentar uma
+  coluna a um modelo **sem migration nenhuma** passava em `test_migrations.py`, nos 908
+  testes da suíte e no `alembic upgrade head` do CI — e a produção não teria a coluna. A
+  suíte cria as tabelas de `Base.metadata` e a produção roda as migrations; os dois
+  caminhos podiam divergir indefinidamente. Foi assim que as doze colunas acima passaram
+  despercebidas.
 - **A resposta do provedor de IA era tratada como contrato validado.** Ela ia direto para
   o INSERT, e não é garantida por contrato nenhum: o modelo erra sozinho (`"HIGH"` em vez
   de `"high"` é o caso clássico, e a coluna é um ENUM do Postgres) e o conteúdo do
@@ -40,6 +41,21 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
   não existe. Agora responde 502, que é o que de fato aconteceu: o serviço a montante não
   entregou.
 
+### Removido
+
+- **O caminho de análise por prompt, que não tinha um único chamador.** Antes da
+  migração, cada dimensão era analisada mandando o repositório para o modelo;
+  `run_dimension_analysis`, `persist_dimension_result`, `compute_overall_score`,
+  `DIMENSION_MODULES`, a tabela de pesos espelhada e os seis prompts por dimensão
+  ficaram no lugar depois que o motor assumiu, sem chamador em `app/`, `tests/`, `docs/`
+  ou `frontend/`. Não era código opcional — era código inalcançável, e
+  `persist_dimension_result` ainda carregava o mesmo defeito da resposta da IA não
+  validada, corrigido acima.
+  O que ele garantia continua garantido: a divergência entre `Dimension` e
+  `FindingCategory` é pega em `test_engine_scoring.py`, e a média ponderada é a do motor.
+  **Os provedores de IA não foram tocados** — sugestões, correção e geração de README
+  continuam usando o provedor configurado, que é a decisão registrada na 0.3.1.
+- `JSON_OUTPUT_INSTRUCTIONS`, em `prompts/context.py`, que só os prompts removidos usavam.
 
 ## [0.3.4] — A mesma porta, pela terceira vez
 
