@@ -15,12 +15,14 @@ from pathlib import Path
 
 import httpx
 import pytest
+from sqlalchemy import select
 
 from app.engine import pipeline
 from app.engine.acquisition import RepositoryTooLargeError
 from app.models.analysis import Analysis, AnalysisResult
 from app.models.enums import AnalysisStatus, Dimension
 from app.models.repository import Repository
+from app.models.suggestion import Suggestion
 from app.tasks import analysis_tasks
 
 REPO_DE_EXEMPLO = {
@@ -209,6 +211,46 @@ async def test_falha_da_ia_nao_invalida_a_analise(db_session, tmp_path, monkeypa
     await db_session.refresh(analysis)
     assert analysis.status is AnalysisStatus.DONE
     assert analysis.overall_score is not None
+
+
+@pytest.mark.asyncio
+async def test_sugestao_malformada_nao_apaga_as_boas(db_session, tmp_path, monkeypatch):
+    """O efeito visível do que `test_resposta_da_ia.py` cobre por dentro.
+
+    As sugestões são gravadas numa transação só e `_enrich_with_ai` engole a
+    exceção de propósito. Antes, uma sugestão com severidade fora do ENUM levava
+    junto todas as boas e o usuário via a análise concluída com nenhuma
+    sugestão — sem nada dizendo por quê.
+    """
+
+    class ProviderComUmaRuim:
+        name = "quase-bom"
+
+        async def generate_text(self, *args, **kwargs):  # pragma: no cover
+            raise NotImplementedError
+
+        async def generate_json(self, *args, **kwargs):
+            return {
+                "suggestions": [
+                    {"title": "boa", "description": "d", "severity": "high"},
+                    {"title": "ruim", "description": "d", "severity": "CATASTROFICO"},
+                ]
+            }
+
+    analysis = await _cenario(db_session, tmp_path, monkeypatch)
+    monkeypatch.setattr(analysis_tasks, "get_optional_ai_provider", lambda: ProviderComUmaRuim())
+
+    await analysis_tasks.run_repository_analysis(analysis.id)
+
+    await db_session.refresh(analysis)
+    assert analysis.status is AnalysisStatus.DONE
+
+    gravadas = await db_session.execute(
+        select(Suggestion).where(Suggestion.analysis_id == analysis.id)
+    )
+    titulos = {linha.title for linha in gravadas.scalars()}
+    assert "boa" in titulos, "a sugestão válida se perdeu junto com a malformada"
+    assert "ruim" in titulos, "a malformada foi normalizada, não descartada"
 
 
 # --- falhas de verdade ------------------------------------------------------
