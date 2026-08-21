@@ -1,9 +1,17 @@
-"""As migrations, executadas de verdade.
+"""As migrations, executadas de verdade, e o schema que elas produzem.
 
-O enum `analysis_dimension` existe em dois lugares que precisam concordar: o
-`Dimension` do SQLAlchemy (do qual a suíte cria as tabelas) e a cadeia de
-migrations (que é o que roda em produção). Verificar só o primeiro deixaria
-passar exatamente o erro mais caro deste PR — um enum que diverge no banco real.
+Existem dois caminhos independentes até um banco com tabelas:
+
+- a suíte chama `Base.metadata.create_all()`, a partir dos modelos;
+- a produção roda `alembic upgrade head`, a partir das migrations.
+
+Nada os confrontava. O efeito medido: acrescentar uma coluna a um modelo **sem
+migration nenhuma** deixava passar `test_migrations.py`, os 908 testes da suíte
+e o `alembic upgrade head` do CI — e a produção simplesmente não teria a coluna.
+
+O mesmo buraco já tinha deixado passar uma divergência real: doze colunas
+NULLable no banco que os modelos declaram NOT NULL, corrigidas pela migration
+0003.
 
 Tudo aqui acontece num schema descartável, criado e removido pelo próprio teste.
 """
@@ -17,7 +25,10 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import command
+from alembic.autogenerate import compare_metadata
 from alembic.config import Config
+from alembic.migration import MigrationContext
+from app.core.database import Base
 from app.models.enums import Dimension
 from tests.conftest import TEST_DATABASE_URL
 
@@ -74,6 +85,104 @@ async def migration_schema():
             # CASCADE só alcança objetos criados dentro deste schema efêmero.
             await conn.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
         await admin.dispose()
+
+
+def _diferencas_de_schema(sync_conn) -> list:
+    """O que o autogenerate do Alembic escreveria numa migration nova.
+
+    Vazio significa que o banco migrado e os modelos declaram a mesma coisa.
+    `compare_type=True` inclui os tipos das colunas, não só a existência delas.
+    """
+    contexto = MigrationContext.configure(sync_conn, opts={"compare_type": True})
+    return compare_metadata(contexto, Base.metadata)
+
+
+@pytest.mark.asyncio
+async def test_o_schema_das_migrations_e_o_dos_modelos(migration_schema):
+    """A garantia central deste arquivo.
+
+    Sem ela, os dois caminhos até o schema podem divergir indefinidamente sem
+    que nada acuse: a suíte valida um banco que a produção não tem.
+
+    Se este teste falhar depois de mexer num modelo, a correção é uma migration
+    nova — nunca editar uma que já rodou.
+    """
+    engine, _ = migration_schema
+
+    async with engine.begin() as conn:
+        await conn.run_sync(lambda sync: command.upgrade(_alembic_config(sync), "head"))
+
+    async with engine.connect() as conn:
+        diferencas = await conn.run_sync(_diferencas_de_schema)
+
+    assert diferencas == [], (
+        "o banco produzido pelas migrations não é o que os modelos declaram. "
+        "Cada item abaixo é uma alteração que faltou virar migration:\n  "
+        + "\n  ".join(str(d) for d in diferencas)
+    )
+
+
+@pytest.mark.asyncio
+async def test_0003_completa_linha_com_nulo_em_vez_de_falhar(migration_schema):
+    """O UPDATE antes de cada `SET NOT NULL` não é decorativo.
+
+    Nenhuma linha *deveria* estar com NULL — as doze colunas têm `server_default`
+    desde a 0001 — mas "não deveria" não é garantia, e uma migration que quebra
+    no meio de um deploy por causa de uma linha é pior do que o problema que
+    conserta. Aqui a linha com NULL é criada de propósito.
+    """
+    engine, _ = migration_schema
+    uid = uuid.uuid4()
+
+    async with engine.begin() as conn:
+        await conn.run_sync(lambda sync: command.upgrade(_alembic_config(sync), "0002"))
+        # `server_default` não impede NULL explícito: ele só age quando a coluna
+        # é omitida no INSERT.
+        await conn.execute(
+            text(
+                """
+                INSERT INTO users (id, email, hashed_password, username, created_at)
+                VALUES (:uid, 'nulo@exemplo.test', 'x', 'nulo', NULL)
+                """
+            ),
+            {"uid": uid},
+        )
+        assert (
+            await conn.execute(text("SELECT created_at FROM users WHERE id = :uid"), {"uid": uid})
+        ).scalar() is None
+
+    async with engine.begin() as conn:
+        await conn.run_sync(lambda sync: command.upgrade(_alembic_config(sync), "0003"))
+        preenchido = (
+            await conn.execute(text("SELECT created_at FROM users WHERE id = :uid"), {"uid": uid})
+        ).scalar()
+
+    assert preenchido is not None, "a migration passou por cima da linha em vez de completá-la"
+
+
+@pytest.mark.asyncio
+async def test_downgrade_da_0003_volta_a_aceitar_nulo(migration_schema):
+    """A 0003 é reversível de verdade, diferente da 0002 — nada nela é
+    destrutivo, então o downgrade devolve exatamente o estado anterior."""
+    engine, schema = migration_schema
+
+    async with engine.begin() as conn:
+        await conn.run_sync(lambda sync: command.upgrade(_alembic_config(sync), "head"))
+        await conn.run_sync(lambda sync: command.downgrade(_alembic_config(sync), "0002"))
+        nulavel = (
+            await conn.execute(
+                text(
+                    """
+                    SELECT is_nullable FROM information_schema.columns
+                    WHERE table_schema = :schema
+                      AND table_name = 'users' AND column_name = 'created_at'
+                    """
+                ),
+                {"schema": schema},
+            )
+        ).scalar()
+
+    assert nulavel == "YES"
 
 
 @pytest.mark.asyncio
