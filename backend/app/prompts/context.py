@@ -29,27 +29,3 @@ def format_repo_context(full_name: str, files: dict[str, str]) -> str:
     if len(context) > max_chars:
         context = context[:max_chars] + "\n\n[...contexto truncado...]"
     return context
-
-
-JSON_OUTPUT_INSTRUCTIONS = """
-Responda APENAS com um JSON válido (sem texto adicional, sem markdown fora do bloco de código),
-no seguinte formato:
-
-{
-  "score": <inteiro de 0 a 100>,
-  "summary": "<resumo objetivo em 2-4 frases, em português>",
-  "findings": [
-    {
-      "title": "<título curto do achado>",
-      "description": "<descrição detalhada e acionável>",
-      "suggestion": "<sugestão objetiva de como corrigir, ou null>",
-      "severity": "<low|medium|high|critical>",
-      "file_path": "<caminho do arquivo relacionado, ou null>",
-      "line": <número da linha relacionada, ou null se não for possível determinar>
-    }
-  ]
-}
-
-Liste no máximo 8 achados, priorizando os mais relevantes. Se não houver problemas
-relevantes na dimensão avaliada, retorne "findings" vazio e um score alto.
-"""

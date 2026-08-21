@@ -176,7 +176,7 @@ repositories/ → acesso a dados (SQLAlchemy) — sem lógica de negócio
 ai/           → interface AIProvider + providers concretos + factory (OPCIONAL)
 models/       → modelos SQLAlchemy (schema do banco)
 schemas/      → schemas Pydantic (contrato da API)
-prompts/      → templates de prompt por dimensão (caminho de IA)
+prompts/      → prompts do que a IA faz DEPOIS da análise: sugestões, correção, README
 tasks/        → execução em segundo plano (orquestra engine/services fora do ciclo request/response)
 ```
 

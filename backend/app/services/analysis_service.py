@@ -1,6 +1,10 @@
-"""Orquestra o pipeline de análise: coleta de contexto do GitHub, chamadas ao
-provedor de IA configurado para cada dimensão, agregação de score e
-persistência dos resultados.
+"""O que a IA faz depois que o motor já analisou: sugestões priorizadas,
+correção de um achado e geração de README.
+
+**A análise em si não passa por aqui.** Ela é do CodeInsight Engine
+(`app/engine/`), que não usa IA nenhuma. Houve um caminho em que cada dimensão
+era analisada por prompt; ele foi substituído na migração e removido depois de
+verificar que não tinha um único chamador no repositório.
 
 Este módulo depende só da interface `AIProvider` (injetada pelo chamador,
 tipicamente via `app.ai.factory.get_ai_provider()`) — nunca de um SDK de IA
@@ -12,36 +16,15 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.base import AIProvider, AIProviderError
-from app.engine.scoring import DIMENSION_WEIGHTS as ENGINE_DIMENSION_WEIGHTS
-from app.models.analysis import Analysis, AnalysisResult
-from app.models.enums import Dimension, Severity
+from app.models.analysis import Analysis
+from app.models.enums import Severity
 from app.models.fix_suggestion import FixSuggestion
 from app.models.readme import GeneratedReadme
 from app.models.suggestion import Suggestion
-from app.prompts import architecture, documentation, fix, git_health, quality, readme_gen, security
+from app.prompts import fix, readme_gen
 from app.prompts import suggestions as suggestions_prompt
-from app.prompts import tests as tests_prompt
 
 logger = logging.getLogger(__name__)
-
-# Caminho LEGADO: as dimensões que um provedor de IA sabe analisar por prompt.
-# É um subconjunto de `Dimension` — `dependencies` e `configuration` existem só
-# no motor, que não usa IA. Não é lacuna: é o motor cobrindo mais que os prompts.
-DIMENSION_MODULES = {
-    Dimension.QUALITY: quality,
-    Dimension.SECURITY: security,
-    Dimension.ARCHITECTURE: architecture,
-    Dimension.DOCUMENTATION: documentation,
-    Dimension.TESTING: tests_prompt,
-    Dimension.GIT: git_health,
-}
-
-# Fonte única dos pesos: o motor. Duplicar a tabela aqui deixaria os dois
-# caminhos discordando sobre o mesmo repositório sem ninguém perceber.
-DIMENSION_WEIGHTS = {
-    Dimension(categoria.value): peso for categoria, peso in ENGINE_DIMENSION_WEIGHTS.items()
-}
-
 
 # --- A resposta do provedor de IA é entrada não confiável ---------------------
 #
@@ -139,37 +122,6 @@ def _normalizar_sugestao(item: object) -> dict | None:
         "file_path": caminho,
         "code_fix": _texto(correcao) if correcao is not None else None,
     }
-
-
-async def run_dimension_analysis(
-    dimension: Dimension, full_name: str, files: dict[str, str], ai_provider: AIProvider
-) -> dict:
-    module = DIMENSION_MODULES[dimension]
-    user_prompt = module.build_user_prompt(full_name, files)
-    result = await ai_provider.generate_json(module.SYSTEM_PROMPT, user_prompt)
-    if not isinstance(result, dict):
-        raise ValueError(f"Resposta inesperada do provedor de IA para dimensão {dimension}")
-    return result
-
-
-def compute_overall_score(scores: dict[Dimension, int]) -> float:
-    total_weight = sum(DIMENSION_WEIGHTS[d] for d in scores)
-    weighted = sum(scores[d] * DIMENSION_WEIGHTS[d] for d in scores)
-    return round(weighted / total_weight, 1) if total_weight else 0.0
-
-
-async def persist_dimension_result(
-    db: AsyncSession, analysis: Analysis, dimension: Dimension, result: dict
-) -> AnalysisResult:
-    row = AnalysisResult(
-        analysis_id=analysis.id,
-        dimension=dimension,
-        score=int(result.get("score", 0)),
-        summary=result.get("summary", ""),
-        findings=result.get("findings", []),
-    )
-    db.add(row)
-    return row
 
 
 async def generate_and_persist_suggestions(
