@@ -7,6 +7,8 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-10-05
+
 ### Corrigido
 
 - **O banco de produção não tinha restrições que os modelos declaram.** Doze colunas
