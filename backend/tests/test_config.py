@@ -45,6 +45,22 @@ def test_database_url_gets_asyncpg_driver(raw: str, expected: str) -> None:
     assert _settings(database_url=raw).database_url == expected
 
 
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        # Connection string do Neon: o asyncpg não aceita sslmode nem channel_binding.
+        (
+            "postgresql://u:p@h/db?sslmode=require&channel_binding=require",
+            "postgresql+asyncpg://u:p@h/db?ssl=require",
+        ),
+        ("postgresql://u:p@h/db?sslmode=require", "postgresql+asyncpg://u:p@h/db?ssl=require"),
+        ("postgresql+asyncpg://u:p@h/db?ssl=require", "postgresql+asyncpg://u:p@h/db?ssl=require"),
+    ],
+)
+def test_database_url_translates_libpq_params(raw: str, expected: str) -> None:
+    assert _settings(database_url=raw).database_url == expected
+
+
 def test_settings_loads_without_ai_api_key(monkeypatch):
     """MIG-004: a aplicação precisa subir sem nenhuma credencial de IA."""
     monkeypatch.delenv("AI_API_KEY", raising=False)
