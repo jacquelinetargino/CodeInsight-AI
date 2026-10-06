@@ -9,6 +9,7 @@ class LocalAIProvider(OpenAIProvider):
     """
 
     name = "local"
+    default_model = None
 
     def __init__(self, api_key: str | None, model: str, base_url: str | None = None) -> None:
         if not base_url:

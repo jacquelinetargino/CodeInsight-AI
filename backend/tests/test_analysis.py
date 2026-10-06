@@ -218,3 +218,108 @@ def test_require_ai_provider_returns_provider_when_configured(monkeypatch):
     get_ai_provider.cache_clear()
 
     assert require_ai_provider() is not None
+
+
+# --- README com IA -------------------------------------------------------------
+
+
+async def _fake_collect_repository_context(access_token, full_name, branch):
+    return {"README.md": "# antigo", "__file_tree__": "README.md"}
+
+
+async def _analysis_done(client, db_session, test_user, authed_client_factory, monkeypatch):
+    monkeypatch.setattr(
+        "app.api.routes.analysis.run_repository_analysis", _noop_run_repository_analysis
+    )
+    monkeypatch.setattr(
+        "app.api.routes.analysis.github_service.collect_repository_context",
+        _fake_collect_repository_context,
+    )
+    headers = authed_client_factory(test_user.id)
+    repo_id = await _add_repo(client, headers, monkeypatch)
+    create = await client.post(
+        f"{PREFIX}/analysis", json={"repository_id": repo_id}, headers=headers
+    )
+    analysis_id = create.json()["id"]
+    await _mark_analysis_done(db_session, analysis_id)
+    return headers, analysis_id
+
+
+async def test_readme_gerado_e_persistido(
+    client, db_session, test_user, authed_client_factory, monkeypatch, override_ai_provider
+):
+    headers, analysis_id = await _analysis_done(
+        client, db_session, test_user, authed_client_factory, monkeypatch
+    )
+    override_ai_provider(text_responses=["# Projeto\n\nGerado pela IA.\n"])
+
+    gerado = await client.post(f"{PREFIX}/analysis/{analysis_id}/readme", headers=headers)
+    assert gerado.status_code == 200
+    assert gerado.json() == {"content": "# Projeto\n\nGerado pela IA."}
+
+    # O front lê o README de volta por GET depois que `has_readme` vira true.
+    detalhe = await client.get(f"{PREFIX}/analysis/{analysis_id}", headers=headers)
+    assert detalhe.json()["has_readme"] is True
+    lido = await client.get(f"{PREFIX}/analysis/{analysis_id}/readme", headers=headers)
+    assert lido.json() == {"content": "# Projeto\n\nGerado pela IA."}
+
+
+async def test_readme_falha_do_provedor_vira_502_com_mensagem(
+    client, db_session, test_user, authed_client_factory, monkeypatch, override_ai_provider
+):
+    """Antes, erro do provedor (timeout, 401, 429 esgotado) escapava como 500 e
+    o front mostrava nada. Agora é 502 com a mensagem que o usuário lê."""
+    from app.ai.base import AIProvider, AIProviderError
+    from app.main import app
+
+    class _ProvedorQueFalha(AIProvider):
+        name = "falha"
+
+        def __init__(self) -> None:
+            pass
+
+        async def generate_text(self, system_prompt, user_prompt, max_tokens=4096):
+            raise AIProviderError("O provedor de IA não respondeu em 120s.")
+
+    headers, analysis_id = await _analysis_done(
+        client, db_session, test_user, authed_client_factory, monkeypatch
+    )
+    override_ai_provider()
+    app.dependency_overrides[require_ai_provider] = lambda: _ProvedorQueFalha()
+
+    response = await client.post(f"{PREFIX}/analysis/{analysis_id}/readme", headers=headers)
+    assert response.status_code == 502
+    assert "não respondeu" in response.json()["detail"]
+
+    # Nada foi gravado: o usuário pode tentar de novo.
+    detalhe = await client.get(f"{PREFIX}/analysis/{analysis_id}", headers=headers)
+    assert detalhe.json()["has_readme"] is False
+
+
+def test_require_ai_provider_mapeia_provider_desconhecido_para_503(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "nao-existe")
+    monkeypatch.setenv("AI_API_KEY", "chave-de-teste")
+    get_settings.cache_clear()
+    get_ai_provider.cache_clear()
+
+    with pytest.raises(HTTPException) as exc:
+        require_ai_provider()
+    assert exc.value.status_code == 503
+    assert "nao-existe" in exc.value.detail
+    get_settings.cache_clear()
+    get_ai_provider.cache_clear()
+
+
+def test_require_ai_provider_aceita_groq(monkeypatch):
+    from app.ai.providers.groq_provider import GroqProvider
+
+    monkeypatch.setenv("AI_PROVIDER", "groq")
+    monkeypatch.setenv("AI_API_KEY", "chave-de-teste")
+    monkeypatch.setenv("AI_BASE_URL", "https://api.groq.com/openai/v1")
+    monkeypatch.setenv("AI_MODEL", "llama-3.3-70b-versatile")
+    get_settings.cache_clear()
+    get_ai_provider.cache_clear()
+
+    assert isinstance(require_ai_provider(), GroqProvider)
+    get_settings.cache_clear()
+    get_ai_provider.cache_clear()

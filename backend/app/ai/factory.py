@@ -18,6 +18,7 @@ from functools import lru_cache
 from app.ai.base import AIProvider
 from app.ai.providers.claude_provider import ClaudeProvider
 from app.ai.providers.gemini_provider import GeminiProvider
+from app.ai.providers.groq_provider import GroqProvider
 from app.ai.providers.local_provider import LocalAIProvider
 from app.ai.providers.openai_provider import OpenAIProvider
 from app.core.config import get_settings
@@ -26,6 +27,7 @@ _PROVIDERS: dict[str, type[AIProvider]] = {
     "claude": ClaudeProvider,
     "openai": OpenAIProvider,
     "gemini": GeminiProvider,
+    "groq": GroqProvider,
     "local": LocalAIProvider,
 }
 
@@ -60,9 +62,14 @@ def get_ai_provider() -> AIProvider:
             "repositórios não depende disso."
         )
 
-    return provider_cls(
-        api_key=settings.ai_api_key, model=settings.ai_model, base_url=settings.ai_base_url
-    )
+    model = settings.ai_model or provider_cls.default_model
+    if not model:
+        raise AIProviderNotConfiguredError(
+            f"AI_MODEL é obrigatório para AI_PROVIDER={provider_key}: "
+            "este provedor não tem um modelo padrão."
+        )
+
+    return provider_cls(api_key=settings.ai_api_key, model=model, base_url=settings.ai_base_url)
 
 
 def get_optional_ai_provider() -> AIProvider | None:

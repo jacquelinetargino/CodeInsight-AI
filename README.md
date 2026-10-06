@@ -54,11 +54,11 @@ pela metade, e o score não muda.
 
 O projeto **não fornece créditos de IA** e **não usa a chave de ninguém**: cada pessoa
 configura o próprio provedor e responde pelos custos dele. São suportados Claude
-(Anthropic), OpenAI, Google Gemini e qualquer servidor local compatível com a API da
-OpenAI (Ollama, LM Studio).
+(Anthropic), OpenAI, Google Gemini, Groq e qualquer servidor local compatível com a
+API da OpenAI (Ollama, LM Studio).
 
 ```env
-AI_PROVIDER=claude   # claude | openai | gemini | local
+AI_PROVIDER=claude   # claude | openai | gemini | groq | local
 AI_API_KEY=...
 AI_MODEL=claude-sonnet-5
 ```

@@ -4,7 +4,11 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.base import AIProvider, AIProviderError
-from app.ai.factory import AIProviderNotConfiguredError, get_ai_provider
+from app.ai.factory import (
+    AIProviderNotConfiguredError,
+    UnknownAIProviderError,
+    get_ai_provider,
+)
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.limiter import limiter
@@ -34,7 +38,9 @@ def require_ai_provider() -> AIProvider:
     e não foi habilitado."""
     try:
         return get_ai_provider()
-    except AIProviderNotConfiguredError as exc:
+    except (AIProviderNotConfiguredError, UnknownAIProviderError) as exc:
+        # AI_PROVIDER com valor inválido também é configuração do servidor, não
+        # falha da requisição — sem isto virava um 500 sem explicação.
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
 
 
@@ -120,9 +126,13 @@ async def generate_readme(
         access_token, repository.full_name, repository.default_branch
     )
 
-    readme = await analysis_service.generate_and_persist_readme(
-        db, analysis, repository.full_name, files, ai_provider
-    )
+    try:
+        readme = await analysis_service.generate_and_persist_readme(
+            db, analysis, repository.full_name, files, ai_provider
+        )
+    except AIProviderError as exc:
+        # Mesmo critério do /fix: 502, quem falhou foi o serviço a montante.
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
     await db.commit()
     return {"content": readme.content}
 

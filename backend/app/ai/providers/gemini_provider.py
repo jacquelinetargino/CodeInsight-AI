@@ -5,6 +5,7 @@ from app.ai.base import AIProvider
 
 class GeminiProvider(AIProvider):
     name = "gemini"
+    default_model = "gemini-1.5-flash"
 
     def __init__(self, api_key: str | None, model: str, base_url: str | None = None) -> None:
         if not api_key:

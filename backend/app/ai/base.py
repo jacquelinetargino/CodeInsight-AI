@@ -19,6 +19,9 @@ class AIProviderError(Exception):
 
 class AIProvider(ABC):
     name: str
+    # Modelo usado quando AI_MODEL não é definido. `None` = o provider não tem
+    # um padrão sensato (ex.: servidor local, onde depende do que foi baixado).
+    default_model: str | None = None
 
     def __init__(self, api_key: str | None, model: str, base_url: str | None = None) -> None:
         """Todo provider é construído com as mesmas três variáveis de ambiente.

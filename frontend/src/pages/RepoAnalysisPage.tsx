@@ -1,4 +1,13 @@
-import { Download, FileText, Github, Info, Lightbulb, PlayCircle, Wrench } from "lucide-react";
+import {
+  AlertCircle,
+  Download,
+  FileText,
+  Github,
+  Info,
+  Lightbulb,
+  PlayCircle,
+  Wrench,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { DimensionCard } from "@/components/analysis/DimensionCard";
@@ -10,6 +19,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { DimensionRadar } from "@/components/charts/DimensionRadar";
 import { ScoreGauge } from "@/components/charts/ScoreGauge";
 import { GithubSummaryPanel } from "@/components/repos/GithubSummaryPanel";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,7 +31,7 @@ import {
   useGenerateReadme,
 } from "@/hooks/useAnalysis";
 import { useGithubSummary, useRepository } from "@/hooks/useRepos";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import { cn, formatDate, scoreColor } from "@/lib/utils";
 import { dimensionLabel } from "@/types";
 
@@ -254,6 +264,13 @@ export function RepoAnalysisPage() {
                       hasReadme={analysis.has_readme}
                       onGenerate={() => generateReadme.mutate()}
                       isGenerating={generateReadme.isPending}
+                      error={
+                        generateReadme.error
+                          ? generateReadme.error instanceof ApiError
+                            ? generateReadme.error.message
+                            : "Não foi possível gerar o README."
+                          : null
+                      }
                     />
                   </TabsContent>
 
@@ -290,11 +307,13 @@ function ReadmeTab({
   hasReadme,
   onGenerate,
   isGenerating,
+  error,
 }: {
   analysisId: string;
   hasReadme: boolean;
   onGenerate: () => void;
   isGenerating: boolean;
+  error: string | null;
 }) {
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -321,6 +340,12 @@ function ReadmeTab({
         <p className="mb-4 text-sm text-muted-foreground">
           Gere automaticamente um README.md profissional com base na análise deste repositório.
         </p>
+        {error && (
+          <Alert variant="destructive" className="mb-4 text-left">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         <Button onClick={handleGenerate} disabled={isGenerating}>
           {isGenerating ? "Gerando…" : "Gerar README com IA"}
         </Button>
