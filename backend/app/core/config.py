@@ -1,7 +1,26 @@
 from functools import lru_cache
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _adapt_libpq_params(url: str) -> str:
+    """Traduz parâmetros de query do libpq para os que o asyncpg entende.
+
+    O Neon (e outros) entregam `?sslmode=require&channel_binding=require`, mas o
+    asyncpg recusa `sslmode` e `channel_binding` com TypeError ao conectar; o
+    equivalente dele é `ssl=<modo>`.
+    """
+    parts = urlsplit(url)
+    if not parts.query:
+        return url
+    params = []
+    for key, value in parse_qsl(parts.query, keep_blank_values=True):
+        if key == "channel_binding":
+            continue
+        params.append(("ssl", value) if key == "sslmode" else (key, value))
+    return urlunsplit(parts._replace(query=urlencode(params)))
 
 
 class Settings(BaseSettings):
@@ -27,10 +46,10 @@ class Settings(BaseSettings):
         # Provedores gerenciados (Render, Heroku etc.) entregam a connection
         # string sem o driver explícito — o SQLAlchemy async precisa de +asyncpg.
         if v.startswith("postgres://"):
-            return "postgresql+asyncpg://" + v[len("postgres://") :]
-        if v.startswith("postgresql://"):
-            return "postgresql+asyncpg://" + v[len("postgresql://") :]
-        return v
+            v = "postgresql+asyncpg://" + v[len("postgres://") :]
+        elif v.startswith("postgresql://"):
+            v = "postgresql+asyncpg://" + v[len("postgresql://") :]
+        return _adapt_libpq_params(v)
 
     jwt_secret: str
     jwt_algorithm: str = "HS256"
