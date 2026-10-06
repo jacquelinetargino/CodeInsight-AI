@@ -316,7 +316,7 @@ def test_require_ai_provider_aceita_groq(monkeypatch):
     monkeypatch.setenv("AI_PROVIDER", "groq")
     monkeypatch.setenv("AI_API_KEY", "chave-de-teste")
     monkeypatch.setenv("AI_BASE_URL", "https://api.groq.com/openai/v1")
-    monkeypatch.setenv("AI_MODEL", "llama-3.3-70b-versatile")
+    monkeypatch.setenv("AI_MODEL", "openai/gpt-oss-120b")
     get_settings.cache_clear()
     get_ai_provider.cache_clear()
 

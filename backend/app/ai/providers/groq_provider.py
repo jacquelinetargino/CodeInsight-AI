@@ -10,7 +10,7 @@ class GroqProvider(OpenAIProvider):
     """
 
     name = "groq"
-    default_model: str | None = "llama-3.3-70b-versatile"
+    default_model: str | None = "openai/gpt-oss-120b"
 
     def __init__(self, api_key: str | None, model: str, base_url: str | None = None) -> None:
         if not api_key:
