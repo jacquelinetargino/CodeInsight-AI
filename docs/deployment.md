@@ -76,6 +76,19 @@ Variáveis de ambiente:
 | `APP_ENV` | `production` |
 | `FRONTEND_URL` | URL da Vercel (passo 3) — usada pelo CORS |
 
+Opcional — recursos de IA (README, correções, sugestões) com a Groq gratuita:
+
+| Chave | Valor |
+|---|---|
+| `AI_PROVIDER` | `groq` |
+| `AI_API_KEY` | chave criada em console.groq.com — só aqui, nunca na Vercel |
+| `AI_BASE_URL` | `https://api.groq.com/openai/v1` |
+| `AI_MODEL` | `llama-3.3-70b-versatile` |
+| `AI_MAX_CONTEXT_CHARS` | `16000` (limite de 12k tokens/min do plano gratuito) |
+
+Sem elas a análise funciona igual; os recursos de IA respondem 503. Detalhes em
+[`ai-providers.md`](ai-providers.md#groq).
+
 `ENCRYPTION_KEY` precisa ser uma chave Fernet (44 caracteres, termina em `=`); qualquer
 outro valor derruba o app na importação com `Fernet key must be 32 url-safe
 base64-encoded bytes`.

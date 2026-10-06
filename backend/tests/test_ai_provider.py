@@ -1,7 +1,8 @@
 from types import SimpleNamespace
 
+import httpx
 import pytest
-from openai import RateLimitError
+from openai import APIConnectionError, APIStatusError, APITimeoutError, RateLimitError
 
 from app.ai.base import AIProvider, AIProviderError
 from app.ai.factory import (
@@ -14,6 +15,7 @@ from app.ai.factory import (
 from app.ai.providers import openai_provider
 from app.ai.providers.claude_provider import ClaudeProvider
 from app.ai.providers.gemini_provider import GeminiProvider
+from app.ai.providers.groq_provider import GROQ_BASE_URL, GroqProvider
 from app.ai.providers.local_provider import LocalAIProvider
 from app.ai.providers.openai_provider import OpenAIProvider
 from app.core.config import get_settings
@@ -53,7 +55,8 @@ async def test_generate_json_raises_on_invalid_json():
 
 
 def test_factory_maps_all_documented_providers():
-    assert set(_PROVIDERS) == {"claude", "openai", "gemini", "local"}
+    assert set(_PROVIDERS) == {"claude", "openai", "gemini", "groq", "local"}
+    assert _PROVIDERS["groq"] is GroqProvider
     assert _PROVIDERS["claude"] is ClaudeProvider
     assert _PROVIDERS["openai"] is OpenAIProvider
     assert _PROVIDERS["gemini"] is GeminiProvider
@@ -106,6 +109,7 @@ def test_local_provider_class_still_requires_base_url():
 def test_local_provider_works_with_base_url(monkeypatch):
     monkeypatch.setenv("AI_PROVIDER", "local")
     monkeypatch.setenv("AI_BASE_URL", "http://localhost:11434/v1")
+    monkeypatch.setenv("AI_MODEL", "qwen2.5-coder:7b")
     assert isinstance(get_ai_provider(), LocalAIProvider)
 
 
@@ -116,6 +120,7 @@ class _FakeRateLimitError(RateLimitError):
     def __init__(self, retry_after: str | None) -> None:
         headers = {"retry-after": retry_after} if retry_after is not None else {}
         self.response = SimpleNamespace(headers=headers)
+        self.status_code = 429
 
 
 def _provider() -> OpenAIProvider:
@@ -155,8 +160,11 @@ async def test_generate_text_desiste_apos_o_limite_de_tentativas(monkeypatch):
     monkeypatch.setattr(provider._client.chat.completions, "create", always_rate_limited)
     monkeypatch.setattr(openai_provider.asyncio, "sleep", lambda s: _noop())
 
-    with pytest.raises(RateLimitError):
+    # Esgotadas as tentativas, o 429 sai como o erro do contrato (AIProviderError),
+    # que as rotas traduzem em 502 — antes escapava cru e virava 500.
+    with pytest.raises(AIProviderError, match="Limite de uso") as exc:
         await provider.generate_text("s", "u")
+    assert isinstance(exc.value.__cause__, RateLimitError)
     assert len(calls) == openai_provider.MAX_RETRIES
 
 
@@ -212,7 +220,7 @@ def test_todo_provider_aceita_a_mesma_assinatura():
         assert assinatura == esperado, f"{nome}: {assinatura} != {esperado}"
 
 
-@pytest.mark.parametrize("provider", ["claude", "openai", "gemini"])
+@pytest.mark.parametrize("provider", ["claude", "openai", "gemini", "groq"])
 def test_provider_sem_chave_falha_com_mensagem_propria(provider):
     """Sem chave, o erro precisa dizer qual variável falta — antes o `None` ia
     para dentro do SDK e voltava como erro obscuro dele."""
@@ -231,3 +239,175 @@ def test_provider_local_nao_exige_chave_mas_exige_endpoint():
 
     # Com endpoint, constrói sem chave.
     assert _PROVIDERS["local"](api_key=None, model="llama", base_url="http://localhost:11434/v1")
+
+
+# --- Groq ---------------------------------------------------------------------
+
+
+def test_groq_usa_o_endpoint_compativel_com_openai_por_padrao():
+    provider = GroqProvider(api_key="chave-de-teste", model="llama-3.3-70b-versatile")
+    assert GROQ_BASE_URL == "https://api.groq.com/openai/v1"
+    assert str(provider._client.base_url).rstrip("/") == GROQ_BASE_URL
+    assert provider._client.api_key == "chave-de-teste"
+    assert provider.model == "llama-3.3-70b-versatile"
+
+
+def test_groq_respeita_ai_base_url_explicito():
+    provider = GroqProvider(api_key="k", model="m", base_url="http://proxy.interno/v1")
+    assert str(provider._client.base_url).rstrip("/") == "http://proxy.interno/v1"
+
+
+def test_factory_monta_groq_a_partir_das_variaveis(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "groq")
+    monkeypatch.setenv("AI_API_KEY", "chave-de-teste")
+    monkeypatch.setenv("AI_BASE_URL", "https://api.groq.com/openai/v1")
+    monkeypatch.setenv("AI_MODEL", "llama-3.3-70b-versatile")
+
+    provider = get_ai_provider()
+
+    assert isinstance(provider, GroqProvider)
+    assert provider.model == "llama-3.3-70b-versatile"
+    assert str(provider._client.base_url).rstrip("/") == GROQ_BASE_URL
+
+
+def test_groq_sem_chave_conta_como_nao_configurado(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "groq")
+    monkeypatch.delenv("AI_API_KEY", raising=False)
+    with pytest.raises(AIProviderNotConfiguredError, match="AI_API_KEY"):
+        get_ai_provider()
+
+
+# --- modelo padrão -------------------------------------------------------------
+
+
+def test_sem_ai_model_cada_provider_usa_o_proprio_padrao(monkeypatch):
+    """Antes havia um único padrão global ("claude-sonnet-5"): trocar só o
+    AI_PROVIDER para groq mandava um modelo da Anthropic para a Groq."""
+    monkeypatch.setenv("AI_PROVIDER", "groq")
+    monkeypatch.setenv("AI_API_KEY", "k")
+    monkeypatch.delenv("AI_MODEL", raising=False)
+    assert get_ai_provider().model == "llama-3.3-70b-versatile"
+
+
+def test_ai_model_sobrescreve_o_padrao(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "groq")
+    monkeypatch.setenv("AI_API_KEY", "k")
+    monkeypatch.setenv("AI_MODEL", "llama-3.1-8b-instant")
+    assert get_ai_provider().model == "llama-3.1-8b-instant"
+
+
+def test_local_sem_modelo_conta_como_nao_configurado(monkeypatch):
+    """Servidor local não tem modelo padrão possível: depende do que foi baixado."""
+    monkeypatch.setenv("AI_PROVIDER", "local")
+    monkeypatch.setenv("AI_BASE_URL", "http://localhost:11434/v1")
+    monkeypatch.delenv("AI_MODEL", raising=False)
+    with pytest.raises(AIProviderNotConfiguredError, match="AI_MODEL"):
+        get_ai_provider()
+
+
+# --- tradução de erros do provedor --------------------------------------------
+
+_REQ = httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions")
+
+
+def _status_error(status_code: int, message: str = "erro") -> APIStatusError:
+    return APIStatusError(message, response=httpx.Response(status_code, request=_REQ), body=None)
+
+
+def _groq_que_falha(monkeypatch, exc: Exception) -> GroqProvider:
+    provider = GroqProvider(api_key="gsk_chave_secreta_de_teste", model="m")
+
+    async def falha(**kwargs):
+        raise exc
+
+    monkeypatch.setattr(provider._client.chat.completions, "create", falha)
+    return provider
+
+
+@pytest.mark.parametrize(
+    ("status_code", "trecho"),
+    [
+        (401, "AI_API_KEY"),
+        (404, "AI_MODEL"),
+        (413, "AI_MAX_CONTEXT_CHARS"),
+        (500, "erro 500"),
+    ],
+)
+async def test_erro_http_vira_ai_provider_error(monkeypatch, status_code, trecho):
+    provider = _groq_que_falha(monkeypatch, _status_error(status_code))
+    with pytest.raises(AIProviderError, match=trecho):
+        await provider.generate_text("s", "u")
+
+
+async def test_mensagem_de_erro_nao_ecoa_a_chave(monkeypatch):
+    """Alguns provedores devolvem parte da chave no corpo do 401; a mensagem que
+    chega ao usuário (e ao log) é montada por nós, não repassada."""
+    provider = _groq_que_falha(
+        monkeypatch, _status_error(401, "Invalid API Key: gsk_chave_secreta_de_teste")
+    )
+    with pytest.raises(AIProviderError) as exc:
+        await provider.generate_text("s", "u")
+    assert "gsk_" not in str(exc.value)
+
+
+async def test_timeout_vira_ai_provider_error(monkeypatch):
+    provider = _groq_que_falha(monkeypatch, APITimeoutError(request=_REQ))
+    with pytest.raises(AIProviderError, match="não respondeu"):
+        await provider.generate_text("s", "u")
+
+
+async def test_falha_de_conexao_vira_ai_provider_error(monkeypatch):
+    provider = _groq_que_falha(monkeypatch, APIConnectionError(request=_REQ))
+    with pytest.raises(AIProviderError, match="conectar"):
+        await provider.generate_text("s", "u")
+
+
+def test_cliente_tem_timeout_explicito():
+    provider = GroqProvider(api_key="k", model="m")
+    assert provider._client.timeout == openai_provider.REQUEST_TIMEOUT_SECONDS
+
+
+def _resposta(conteudo):
+    return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=conteudo))])
+
+
+@pytest.mark.parametrize("conteudo", [None, "", "   \n"])
+async def test_resposta_vazia_vira_ai_provider_error(monkeypatch, conteudo):
+    provider = GroqProvider(api_key="k", model="m")
+
+    async def vazio(**kwargs):
+        return _resposta(conteudo)
+
+    monkeypatch.setattr(provider._client.chat.completions, "create", vazio)
+    with pytest.raises(AIProviderError, match="vazia"):
+        await provider.generate_text("s", "u")
+
+
+async def test_resposta_sem_choices_vira_ai_provider_error(monkeypatch):
+    provider = GroqProvider(api_key="k", model="m")
+
+    async def sem_choices(**kwargs):
+        return SimpleNamespace(choices=[])
+
+    monkeypatch.setattr(provider._client.chat.completions, "create", sem_choices)
+    with pytest.raises(AIProviderError, match="vazia"):
+        await provider.generate_text("s", "u")
+
+
+async def test_chamada_usa_modelo_e_mensagens_configurados(monkeypatch):
+    provider = GroqProvider(api_key="k", model="llama-3.3-70b-versatile")
+    chamadas = []
+
+    async def captura(**kwargs):
+        chamadas.append(kwargs)
+        return _resposta("# OK")
+
+    monkeypatch.setattr(provider._client.chat.completions, "create", captura)
+
+    assert await provider.generate_text("sistema", "usuário", max_tokens=123) == "# OK"
+    assert chamadas[0]["model"] == "llama-3.3-70b-versatile"
+    assert chamadas[0]["max_tokens"] == 123
+    assert chamadas[0]["messages"] == [
+        {"role": "system", "content": "sistema"},
+        {"role": "user", "content": "usuário"},
+    ]

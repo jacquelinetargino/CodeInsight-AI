@@ -68,11 +68,14 @@ class Settings(BaseSettings):
     # externa. Estes campos servem apenas a recursos complementares (explicar
     # achados, resumir relatório, sugerir correções, gerar documentação) e por
     # isso não têm valor obrigatório: a aplicação sobe sem nenhum deles.
-    ai_provider: str = "claude"  # claude | openai | gemini | local
+    ai_provider: str = "claude"  # claude | openai | gemini | groq | local
     ai_api_key: str | None = None
-    ai_model: str = "claude-sonnet-5"
+    # Sem valor, cada provider usa o próprio `default_model`. Um padrão único
+    # aqui (era "claude-sonnet-5") ia parar na Groq ao trocar só AI_PROVIDER.
+    ai_model: str | None = None
     # Necessário para "local" (ex.: http://localhost:11434/v1 no Ollama) e
-    # opcional para apontar OpenAI/Gemini para um endpoint compatível custom.
+    # opcional para apontar os demais para um endpoint compatível custom
+    # (para "groq", o padrão já é https://api.groq.com/openai/v1).
     ai_base_url: str | None = None
     # Teto do bloco de contexto enviado em cada prompt de análise. Existe porque
     # provedores cobram/limitam por tokens/minuto: uma análise dispara ~7

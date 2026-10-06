@@ -57,10 +57,11 @@ via variável de ambiente.
 
 | Variável | Descrição |
 |---|---|
-| `AI_PROVIDER` | `claude` \| `openai` \| `gemini` \| `local` |
+| `AI_PROVIDER` | `claude` \| `openai` \| `gemini` \| `groq` \| `local` |
 | `AI_API_KEY` | Chave do provedor escolhido |
-| `AI_MODEL` | Nome do modelo (ex.: `claude-sonnet-5`, `gpt-4o`, `gemini-1.5-pro`, ou o nome carregado no seu servidor local) |
-| `AI_BASE_URL` | Obrigatório só para `local`; opcional para os demais | 
+| `AI_MODEL` | Nome do modelo (ex.: `claude-sonnet-5`, `gpt-4o`, `llama-3.3-70b-versatile`, ou o nome carregado no seu servidor local). Em branco, usa o padrão do provider; obrigatório para `local` |
+| `AI_BASE_URL` | Obrigatório só para `local`; opcional para os demais (para `groq` o padrão é `https://api.groq.com/openai/v1`) |
+| `AI_MAX_CONTEXT_CHARS` | Teto, em caracteres, do contexto de cada prompt (padrão `100000`). Na Groq gratuita use `16000` |
 
 Veja [`ai-providers.md`](ai-providers.md) para detalhes de cada provider.
 

@@ -5,6 +5,7 @@ from app.ai.base import AIProvider
 
 class ClaudeProvider(AIProvider):
     name = "claude"
+    default_model = "claude-sonnet-5"
 
     def __init__(self, api_key: str | None, model: str, base_url: str | None = None) -> None:
         if not api_key:
