@@ -245,11 +245,11 @@ def test_provider_local_nao_exige_chave_mas_exige_endpoint():
 
 
 def test_groq_usa_o_endpoint_compativel_com_openai_por_padrao():
-    provider = GroqProvider(api_key="chave-de-teste", model="llama-3.3-70b-versatile")
+    provider = GroqProvider(api_key="chave-de-teste", model="openai/gpt-oss-120b")
     assert GROQ_BASE_URL == "https://api.groq.com/openai/v1"
     assert str(provider._client.base_url).rstrip("/") == GROQ_BASE_URL
     assert provider._client.api_key == "chave-de-teste"
-    assert provider.model == "llama-3.3-70b-versatile"
+    assert provider.model == "openai/gpt-oss-120b"
 
 
 def test_groq_respeita_ai_base_url_explicito():
@@ -261,12 +261,12 @@ def test_factory_monta_groq_a_partir_das_variaveis(monkeypatch):
     monkeypatch.setenv("AI_PROVIDER", "groq")
     monkeypatch.setenv("AI_API_KEY", "chave-de-teste")
     monkeypatch.setenv("AI_BASE_URL", "https://api.groq.com/openai/v1")
-    monkeypatch.setenv("AI_MODEL", "llama-3.3-70b-versatile")
+    monkeypatch.setenv("AI_MODEL", "openai/gpt-oss-120b")
 
     provider = get_ai_provider()
 
     assert isinstance(provider, GroqProvider)
-    assert provider.model == "llama-3.3-70b-versatile"
+    assert provider.model == "openai/gpt-oss-120b"
     assert str(provider._client.base_url).rstrip("/") == GROQ_BASE_URL
 
 
@@ -286,14 +286,14 @@ def test_sem_ai_model_cada_provider_usa_o_proprio_padrao(monkeypatch):
     monkeypatch.setenv("AI_PROVIDER", "groq")
     monkeypatch.setenv("AI_API_KEY", "k")
     monkeypatch.delenv("AI_MODEL", raising=False)
-    assert get_ai_provider().model == "llama-3.3-70b-versatile"
+    assert get_ai_provider().model == "openai/gpt-oss-120b"
 
 
 def test_ai_model_sobrescreve_o_padrao(monkeypatch):
     monkeypatch.setenv("AI_PROVIDER", "groq")
     monkeypatch.setenv("AI_API_KEY", "k")
-    monkeypatch.setenv("AI_MODEL", "llama-3.1-8b-instant")
-    assert get_ai_provider().model == "llama-3.1-8b-instant"
+    monkeypatch.setenv("AI_MODEL", "openai/gpt-oss-20b")
+    assert get_ai_provider().model == "openai/gpt-oss-20b"
 
 
 def test_local_sem_modelo_conta_como_nao_configurado(monkeypatch):
@@ -395,7 +395,7 @@ async def test_resposta_sem_choices_vira_ai_provider_error(monkeypatch):
 
 
 async def test_chamada_usa_modelo_e_mensagens_configurados(monkeypatch):
-    provider = GroqProvider(api_key="k", model="llama-3.3-70b-versatile")
+    provider = GroqProvider(api_key="k", model="openai/gpt-oss-120b")
     chamadas = []
 
     async def captura(**kwargs):
@@ -405,7 +405,7 @@ async def test_chamada_usa_modelo_e_mensagens_configurados(monkeypatch):
     monkeypatch.setattr(provider._client.chat.completions, "create", captura)
 
     assert await provider.generate_text("sistema", "usuário", max_tokens=123) == "# OK"
-    assert chamadas[0]["model"] == "llama-3.3-70b-versatile"
+    assert chamadas[0]["model"] == "openai/gpt-oss-120b"
     assert chamadas[0]["max_tokens"] == 123
     assert chamadas[0]["messages"] == [
         {"role": "system", "content": "sistema"},

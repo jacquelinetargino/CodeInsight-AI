@@ -46,12 +46,12 @@ AI_BASE_URL=          # obrigatório só para "local"; opcional para apontar
 | `claude` | `claude-sonnet-5`, `claude-opus-5` | opcional |
 | `openai` | `gpt-4o`, `gpt-4o-mini` | opcional |
 | `gemini` | `gemini-1.5-pro`, `gemini-1.5-flash` | não suportado pelo SDK atual |
-| `groq` | `llama-3.3-70b-versatile`, `llama-3.1-8b-instant` | opcional (padrão `https://api.groq.com/openai/v1`) |
+| `groq` | `openai/gpt-oss-120b`, `openai/gpt-oss-20b` | opcional (padrão `https://api.groq.com/openai/v1`) |
 | `local` | o nome do modelo carregado no seu servidor | **obrigatório** (ex.: `http://localhost:11434/v1` para o Ollama) |
 
 Sem `AI_MODEL`, cada provider usa o próprio modelo padrão (`default_model` na
 classe): `claude-sonnet-5`, `gpt-4o-mini`, `gemini-1.5-flash`,
-`llama-3.3-70b-versatile`. `local` não tem padrão — o modelo depende do que foi
+`openai/gpt-oss-120b`. `local` não tem padrão — o modelo depende do que foi
 baixado no servidor — e sem `AI_MODEL` conta como não configurado.
 
 `local` funciona com qualquer servidor que exponha uma API compatível com a
@@ -69,17 +69,20 @@ padrão — retry em 429, timeout e tradução de erros vêm de lá.
 AI_PROVIDER=groq
 AI_API_KEY=your-groq-api-key
 AI_BASE_URL=https://api.groq.com/openai/v1   # opcional, já é o padrão
-AI_MODEL=llama-3.3-70b-versatile
-AI_MAX_CONTEXT_CHARS=16000
+AI_MODEL=openai/gpt-oss-120b
+AI_MAX_CONTEXT_CHARS=6000
 ```
 
 - **A chave fica só no backend** (variável de ambiente do servidor). Nunca em
   variável `VITE_*`, que vai embutida no JavaScript público, nem em arquivo
   versionado. O frontend só fala com a API do CodeInsight.
-- **`AI_MAX_CONTEXT_CHARS=16000`**: o plano gratuito limita o
-  `llama-3.3-70b-versatile` a 12 mil tokens por minuto, e o prompt e a resposta
+- **`AI_MAX_CONTEXT_CHARS=6000`**: o plano gratuito limita o
+  `openai/gpt-oss-120b` a 8 mil tokens por minuto, e o prompt e a resposta
   (até 6000 tokens no README) entram nessa conta. Com o padrão de 100 mil
   caracteres (~28 mil tokens) a Groq recusa o pedido inteiro com 413.
+- O `llama-3.3-70b-versatile` foi desligado pela Groq em 16/08/2026 nos planos
+  free e developer; quem ainda o tiver em `AI_MODEL` recebe 404 ("modelo não
+  encontrado").
 - A análise de repositórios não depende da Groq; sem a chave, só README,
   correções e sugestões ficam indisponíveis (503).
 
