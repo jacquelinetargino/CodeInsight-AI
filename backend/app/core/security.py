@@ -1,9 +1,12 @@
+import hashlib
+import hmac
 import secrets
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import Any
 
 from cryptography.fernet import Fernet
+from itsdangerous import BadSignature, URLSafeTimedSerializer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
@@ -61,3 +64,44 @@ def encrypt_secret(raw: str) -> str:
 
 def decrypt_secret(token: str) -> str:
     return _fernet.decrypt(token.encode()).decode()
+
+
+# --- Redefinição de senha -------------------------------------------------------
+#
+# Token assinado (HMAC com o JWT_SECRET), não guardado no banco. Leva o id do
+# usuário e uma impressão do hash de senha atual: trocar a senha muda o hash, e
+# todo link emitido antes deixa de valer. É isso que torna o link de uso único
+# sem precisar de tabela nem migration.
+_RESET_SALT = "password-reset"
+
+
+def _reset_serializer() -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(settings.jwt_secret, salt=_RESET_SALT)
+
+
+def _password_fingerprint(hashed_password: str) -> str:
+    return hashlib.sha256(hashed_password.encode()).hexdigest()[:16]
+
+
+def create_password_reset_token(user_id: str, hashed_password: str) -> str:
+    return _reset_serializer().dumps({"sub": user_id, "pw": _password_fingerprint(hashed_password)})
+
+
+def read_password_reset_token(token: str) -> tuple[str, str] | None:
+    """`(user_id, impressão_da_senha)` se a assinatura confere e o prazo não
+    venceu; `None` em qualquer outro caso — quem chama não precisa distinguir."""
+    max_age = settings.password_reset_expire_minutes * 60
+    try:
+        data = _reset_serializer().loads(token, max_age=max_age)
+    except BadSignature:  # SignatureExpired é subclasse
+        return None
+    if not isinstance(data, dict):
+        return None
+    sub, pw = data.get("sub"), data.get("pw")
+    if not isinstance(sub, str) or not isinstance(pw, str):
+        return None
+    return sub, pw
+
+
+def password_fingerprint_matches(fingerprint: str, hashed_password: str) -> bool:
+    return hmac.compare_digest(fingerprint, _password_fingerprint(hashed_password))
