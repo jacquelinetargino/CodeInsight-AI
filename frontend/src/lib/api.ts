@@ -82,6 +82,16 @@ export const api = {
       request<TokenResponse>("/auth/login", { method: "POST", body: JSON.stringify(payload) }),
     me: () => request<User>("/auth/me"),
     logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),
+    forgotPassword: (email: string) =>
+      request<{ message: string }>("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      }),
+    resetPassword: (token: string, newPassword: string) =>
+      request<{ message: string }>("/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ token, new_password: newPassword }),
+      }),
   },
   settings: {
     getGithubTokenStatus: () => request<GithubTokenStatus>("/settings/github-token"),

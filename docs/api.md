@@ -14,6 +14,8 @@ Todas as rotas usam o prefixo `/api/v1`. Rotas marcadas como **🔒** exigem o h
 | POST | `/auth/register` | Cria conta (e-mail, senha, username). Retorna `{access_token, token_type, user}` |
 | POST | `/auth/login` | Autentica. Retorna `{access_token, token_type, user}` |
 | POST | `/auth/logout` | No-op (JWT é stateless) — só para simetria da API |
+| POST | `/auth/forgot-password` | `{email}`. Envia o link de redefinição se a conta existir; responde `202` com a **mesma** mensagem em qualquer caso. `503` sem provedor de e-mail |
+| POST | `/auth/reset-password` | `{token, new_password}`. Troca a senha; `400` se o link for inválido, vencido ou já usado |
 | 🔒 GET | `/auth/me` | Retorna o usuário autenticado |
 
 ## Configurações (`/settings`)

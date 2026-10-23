@@ -76,6 +76,16 @@ Variáveis de ambiente:
 | `APP_ENV` | `production` |
 | `FRONTEND_URL` | URL da Vercel (passo 3) — usada pelo CORS |
 
+Opcional — "esqueci a senha" (ver [`configuration.md`](configuration.md#e-mail-recuperação-de-senha)):
+
+| Chave | Valor |
+|---|---|
+| `EMAIL_PROVIDER` | `brevo` |
+| `BREVO_API_KEY` | chave do Brevo — só aqui, nunca na Vercel |
+| `EMAIL_FROM` | o remetente verificado no Brevo |
+
+`FRONTEND_URL` precisa começar pela URL da Vercel: é dela que sai o link do e-mail.
+
 Opcional — recursos de IA (README, correções, sugestões) com a Groq gratuita:
 
 | Chave | Valor |

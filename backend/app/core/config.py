@@ -63,6 +63,17 @@ class Settings(BaseSettings):
     # de requisições não autenticadas na GitHub API).
     github_token: str | None = None
 
+    # --- E-mail (OPCIONAL — só para "esqueci a senha") ---
+    # Envio por API HTTP, não SMTP: o plano gratuito do Render bloqueia as
+    # portas 25/465/587. Sem provedor, a recuperação de senha responde 503 e o
+    # resto da aplicação não muda.
+    email_provider: str | None = None  # brevo
+    brevo_api_key: str | None = None
+    # Remetente; precisa estar verificado no provedor.
+    email_from: str | None = None
+    email_from_name: str = "CodeInsight AI"
+    password_reset_expire_minutes: int = 30
+
     # --- Provedor de IA (LEGACY/OPCIONAL) ---
     # A análise principal é feita pelo CodeInsight Engine, em Python, sem IA
     # externa. Estes campos servem apenas a recursos complementares (explicar
@@ -121,6 +132,16 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
+
+    @property
+    def email_configured(self) -> bool:
+        provider = (self.email_provider or "").lower().strip()
+        return provider == "brevo" and bool(self.brevo_api_key) and bool(self.email_from)
+
+    @property
+    def public_frontend_url(self) -> str:
+        """Base dos links enviados por e-mail: a primeira origem de FRONTEND_URL."""
+        return self.cors_origins[0].rstrip("/") if self.cors_origins else ""
 
     @property
     def ai_configured(self) -> bool:

@@ -53,6 +53,25 @@ Não há `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET` — o projeto não usa OAuth 
 GitHub. PATs de usuário são conectados pela própria interface (Configurações), não
 via variável de ambiente.
 
+## E-mail (recuperação de senha)
+
+Opcional. Sem provedor, `POST /auth/forgot-password` responde 503 e o resto da
+aplicação não muda. O envio é pela API HTTP do Brevo, não por SMTP — o plano
+gratuito do Render bloqueia as portas 25/465/587.
+
+| Variável | Descrição |
+|---|---|
+| `EMAIL_PROVIDER` | `brevo` (único suportado) ou vazio para desligar |
+| `BREVO_API_KEY` | Chave de API do Brevo (*SMTP & API → API Keys*). Só no backend |
+| `EMAIL_FROM` | Remetente, verificado no Brevo (*Senders, Domains & Dedicated IPs*) |
+| `EMAIL_FROM_NAME` | Nome do remetente (padrão `CodeInsight AI`) |
+| `PASSWORD_RESET_EXPIRE_MINUTES` | Validade do link (padrão `30`) |
+
+O link enviado aponta para a **primeira** origem de `FRONTEND_URL` +
+`/reset-password?token=...`. O token é assinado com o `JWT_SECRET` e leva uma
+impressão do hash de senha atual: depois que a senha muda, qualquer link emitido
+antes deixa de valer.
+
 ## Provedor de IA
 
 | Variável | Descrição |

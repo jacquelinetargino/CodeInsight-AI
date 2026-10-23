@@ -310,6 +310,11 @@ def test_toda_rota_de_negocio_exige_autenticacao():
         # Logout é do lado do cliente: o token é stateless e o servidor não
         # guarda blocklist. Exigir token aqui não protegeria nada.
         f"{PREFIX}/auth/logout",
+        # Quem esqueceu a senha, por definição, não tem token. A proteção destas
+        # duas é outra: resposta idêntica para qualquer e-mail, rate limit, e um
+        # token assinado de uso único que só o dono da caixa de e-mail recebe.
+        f"{PREFIX}/auth/forgot-password",
+        f"{PREFIX}/auth/reset-password",
     }
 
     desprotegidas = set()
