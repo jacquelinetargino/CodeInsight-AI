@@ -16,7 +16,13 @@ settings = get_settings()
 config.set_main_option("sqlalchemy.url", settings.database_url)
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # `disable_existing_loggers=False`: o padrão do `fileConfig` DESLIGA todo
+    # logger já criado no processo. Quando as migrations rodam dentro de outro
+    # processo Python (a suíte de testes faz isso), os loggers da aplicação —
+    # inclusive os avisos de segurança do login social — ficavam mudos dali em
+    # diante. Em produção o `start.sh` roda o Alembic num processo separado,
+    # então lá nada muda.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 
