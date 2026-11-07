@@ -108,8 +108,9 @@ o `GITHUB_TOKEN` do servidor nem o PAT que cada usuário conecta em Configuraç�
 2. **Backup do banco.** O deploy roda `alembic upgrade head` (migration 0004, só
    aditiva). No Neon, crie uma branch do banco como snapshot antes do merge.
 3. **OAuth, `PUBLIC_FRONTEND_URL` e `BACKEND_URL`.** O código atual ignora essas
-   variáveis, então podem ser cadastradas antes do merge. Salvar variáveis no Render
-   dispara um novo deploy.
+   variáveis, então podem ser cadastradas antes do merge. No Render, **Save only** guarda
+   sem publicar — os valores entram no próximo deploy; **Save, rebuild, and deploy**
+   publica na hora.
 4. **Merge na `main`.** Confira que o **Auto-Deploy** do Render está ligado para a
    `main`. A Vercel publica em segundos e o Render em alguns minutos — nesse intervalo
    os botões de login social ainda não funcionam.
@@ -117,15 +118,54 @@ o `GITHUB_TOKEN` do servidor nem o PAT que cada usuário conecta em Configuraç�
 ### Revertendo
 
 Reverter só o código **quebra o deploy**: o banco fica na revisão `0004`, que o código
-antigo não conhece, e o `alembic upgrade head` do `start.sh` falha. Antes de reverter,
-rode no **Shell** do serviço no Render:
+antigo não conhece, e o `alembic upgrade head` do `start.sh` falha — o Render mantém a
+versão nova no ar e o rollback não acontece. A ordem é sempre: **primeiro o banco, depois
+o código.**
 
-```bash
-alembic downgrade 0003
+O plano Free do Render **não tem Shell nem SSH** (nem pre-deploy command), então o
+downgrade roda **do seu computador**, direto contra o Neon.
+
+#### 1. Downgrade do banco (preserva os dados)
+
+Num checkout que tenha a migration `0004` (a `main` depois do merge), no PowerShell:
+
+```powershell
+cd backend
+# A connection string do Neon (branch production, a mesma do Render). Digitada aqui,
+# ela não fica no histórico do terminal nem aparece na tela.
+$env:DATABASE_URL = Read-Host "Connection string do Neon (production)"
+# O Alembic carrega as configurações da app, que exigem estas duas. Não são usadas
+# na migration; qualquer valor serve.
+$env:JWT_SECRET = "rollback"
+$env:ENCRYPTION_KEY = "rollback"
+
+.\.venv\Scripts\alembic.exe current      # deve mostrar: 0004 (head)
+.\.venv\Scripts\alembic.exe downgrade 0003
+.\.venv\Scripts\alembic.exe current      # deve mostrar: 0003
+
+Remove-Item Env:DATABASE_URL, Env:JWT_SECRET, Env:ENCRYPTION_KEY
 ```
 
 O downgrade remove `oauth_identities` e dá às contas sem senha um hash inutilizável — elas
-continuam existindo e podem definir senha pelo "esqueci a senha".
+continuam existindo e podem definir senha pelo "esqueci a senha". Contas, repositórios,
+análises e PATs não são tocados. Entre este passo e o próximo, o login social da versão
+nova falha (a tabela sumiu); login por senha continua funcionando.
+
+#### 2. Voltar o código
+
+- **Mais rápido:** Render → serviço → **Events** → deploy anterior ao merge →
+  **Rollback**. O `alembic upgrade head` encontra o banco em `0003` e não faz nada.
+- **Obrigatório em seguida:** no GitHub, abra o PR #50 → **Revert** → faça o merge do PR
+  de revert. Sem isso, o próximo push na `main` publicaria a versão nova de novo — agora
+  com o banco em `0003`, o que simplesmente reaplicaria a `0004`. A Vercel volta junto,
+  pelo mesmo merge.
+
+#### Último recurso: restaurar o backup do Neon
+
+Se o banco estiver em estado inconsistente, o Neon restaura a branch `production` a
+partir de `backup-pre-oauth-pr50` (**Branches → production → Restore**). **É destrutivo:**
+tudo o que foi gravado depois do backup (contas novas, análises) se perde. Só com decisão
+explícita. Depois da restauração o banco já está em `0003`, e o passo 2 vale igual.
 
 ## Checklist depois do deploy
 
