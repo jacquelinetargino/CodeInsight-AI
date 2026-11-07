@@ -6,6 +6,7 @@ import { LoginPage } from "@/pages/LoginPage";
 import { OAuthCallbackPage } from "@/pages/OAuthCallbackPage";
 import { RegisterPage } from "@/pages/RegisterPage";
 import { RepoAnalysisPage } from "@/pages/RepoAnalysisPage";
+import { PrivacyPage } from "@/pages/PrivacyPage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 
@@ -17,6 +18,8 @@ export default function App() {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      {/* Pública: o Google exige a URL dela para publicar o login com Google. */}
+      <Route path="/privacidade" element={<PrivacyPage />} />
       <Route path="/auth/callback" element={<OAuthCallbackPage />} />
       <Route
         path="/dashboard"
