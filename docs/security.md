@@ -136,6 +136,28 @@ o limite de 20.
 próprio balde e o limite efetivo é multiplicado pelo número de réplicas. Corrigir exigiria
 armazenamento compartilhado.
 
+### Qual IP conta (atrás de proxy)
+
+A chave é o IP do cliente resolvido por `app/core/client_ip.py`, não o
+`request.client.host`. Atrás de um proxy, `client.host` é o IP **do proxy**: no Render,
+todos os usuários dividiam um único balde — 10 logins por minuto para o site inteiro.
+
+- `TRUSTED_PROXY_HOPS=0` (padrão): usa o IP da conexão e ignora `X-Forwarded-For`. É o
+  comportamento de antes e o certo para dev local, Docker Compose e testes.
+- `TRUSTED_PROXY_HOPS=N`: usa a **N-ésima entrada do `X-Forwarded-For` contando da
+  direita**. Proxies acrescentam entradas no fim; o que o cliente forja fica à esquerda e
+  nunca é lido. Menos entradas que N, ou valor que não é IP → volta para a conexão.
+- IPv6 conta pelo `/64` (um cliente costuma ter o `/64` inteiro); IPv4 pelo endereço
+  exato; IPv4 mapeado em IPv6 é tratado como o IPv4.
+
+Por que não `--forwarded-allow-ips='*'` do uvicorn: com tudo confiável ele devolve a
+**primeira** entrada do cabeçalho — exatamente a que o cliente escreve.
+
+**N precisa ser exato, e errar para mais é o erro perigoso.** N menor que a cadeia real
+faz a chave virar o IP de um proxy (balde compartilhado, mas não burlável); N maior faz a
+chave cair numa posição que o cliente controla. Não ative sem validar a cadeia real —
+procedimento em [`proxy-ip.md`](proxy-ip.md).
+
 ## Validação de entrada
 
 Todo body de request é validado via Pydantic antes de chegar à lógica de negócio.

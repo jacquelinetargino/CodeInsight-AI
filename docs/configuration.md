@@ -43,6 +43,8 @@ repositório analisado é dado de terceiros e pode ser hostil.
 | `JWT_ALGORITHM` | Padrão `HS256` |
 | `JWT_EXPIRE_MINUTES` | Validade do token de acesso (padrão 1440 = 24h) |
 | `ENCRYPTION_KEY` | Chave Fernet usada para criptografar o PAT do GitHub em repouso. Gere com `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
+| `TRUSTED_PROXY_HOPS` | Padrão `0`. Número de proxies confiáveis que acrescentam ao `X-Forwarded-For`; com 0, o rate limit usa o IP da conexão. **Só ative depois de validar a cadeia real** — ver [`proxy-ip.md`](proxy-ip.md) |
+| `PROXY_DIAGNOSTICS_ENABLED` | Padrão `false`. Liga `GET /health/proxy` (forma da cadeia de proxies, IPs mascarados). Só durante a validação |
 
 ## GitHub
 

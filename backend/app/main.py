@@ -6,7 +6,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app import __version__
-from app.api.routes import analysis, auth, dashboard, oauth, reports, repos
+from app.api.routes import analysis, auth, dashboard, diagnostics, oauth, reports, repos
 from app.api.routes import settings as settings_routes
 from app.core.config import get_settings
 from app.core.limiter import limiter
@@ -54,6 +54,8 @@ app.include_router(analysis.router, prefix=settings.api_v1_prefix)
 app.include_router(reports.router, prefix=settings.api_v1_prefix)
 app.include_router(settings_routes.router, prefix=settings.api_v1_prefix)
 app.include_router(dashboard.router, prefix=settings.api_v1_prefix)
+# Fora do prefixo da API, junto de /health: é operação, não produto.
+app.include_router(diagnostics.router)
 
 
 @app.get("/health")

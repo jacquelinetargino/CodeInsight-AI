@@ -304,6 +304,10 @@ def test_toda_rota_de_negocio_exige_autenticacao():
         "/docs/oauth2-redirect",
         "/redoc",
         "/health",
+        # Diagnóstico da cadeia de proxies: 404 a menos que o operador ligue
+        # PROXY_DIAGNOSTICS_ENABLED, e mesmo ligado só mostra a quem chama a
+        # forma da própria requisição, com IPs mascarados.
+        "/health/proxy",
         # O usuário ainda não tem token nestas.
         f"{PREFIX}/auth/register",
         f"{PREFIX}/auth/login",

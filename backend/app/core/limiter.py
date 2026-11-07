@@ -11,6 +11,9 @@ respondiam 401 e nenhuma 429. Cada tentativa contra uma conta existente também
 custa ~210 ms de CPU do servidor (o `verify_password` do bcrypt), então a rota
 servia de alavanca de exaustão sem sequer precisar de credencial.
 
+**Qual IP:** o do cliente, resolvido em `app.core.client_ip` a partir dos
+proxies confiáveis (`TRUSTED_PROXY_HOPS`). Com o padrão 0, é o IP da conexão.
+
 **O que este limite não resolve:** a chave é o IP, então um atacante distribuído
 continua tendo 10 tentativas por minuto *por endereço*. Barrar isso exigiria
 contagem por conta em armazenamento compartilhado — ver a limitação de memória
@@ -37,6 +40,11 @@ passar despercebido: um dos dois limites funcionava como esperado.
 """
 
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 
-limiter = Limiter(key_func=get_remote_address, key_style="endpoint")
+from app.core.client_ip import rate_limit_key
+
+# A chave é o IP do cliente resolvido por `rate_limit_key`, não o
+# `get_remote_address` do slowapi: atrás do proxy do Render, este devolvia o IP
+# do proxy e todos os usuários dividiam o mesmo balde. Sem TRUSTED_PROXY_HOPS
+# configurado, as duas coisas são iguais — o IP da conexão.
+limiter = Limiter(key_func=rate_limit_key, key_style="endpoint")
