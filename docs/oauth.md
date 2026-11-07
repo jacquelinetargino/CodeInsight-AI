@@ -1,5 +1,8 @@
 # Login com Google e GitHub
 
+> Publicando em produção? A ordem dos passos, o backup antes da migration, como
+> reverter e o checklist de testes estão em [`auth-go-live.md`](auth-go-live.md).
+
 Opcional. Cada provedor só aparece habilitado quando **as duas** variáveis dele estão
 definidas no backend; sem elas, o botão fica desabilitado na tela de login e o resto da
 aplicação não muda.

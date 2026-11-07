@@ -88,7 +88,8 @@ ar em produção:
 | `BREVO_API_KEY` | chave do Brevo — só aqui, nunca na Vercel |
 | `EMAIL_FROM` | o remetente verificado no Brevo |
 
-Opcional — login com Google e GitHub (passo a passo em [`oauth.md`](oauth.md)):
+Opcional — login com Google e GitHub (passo a passo em [`oauth.md`](oauth.md); ordem
+de publicação e checklist de testes em [`auth-go-live.md`](auth-go-live.md)):
 
 | Chave | Valor |
 |---|---|
