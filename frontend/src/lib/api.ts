@@ -2,17 +2,21 @@ import { tokenStorage } from "@/lib/tokenStorage";
 import type {
   Analysis,
   AnalysisDetail,
+  AuthProviders,
   DashboardSummary,
   FixSuggestion,
   GithubRepo,
   GithubRepoSummary,
   GithubTokenStatus,
+  Identities,
+  OAuthExchangeResponse,
+  OAuthProvider,
   Repository,
   TokenResponse,
   User,
 } from "@/types";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 export class ApiError extends Error {
   constructor(
@@ -92,6 +96,19 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ token, new_password: newPassword }),
       }),
+    providers: () => request<AuthProviders>("/auth/providers"),
+    // O Bearer, quando existe, vai junto (ver `request`): é ele que prova, na
+    // troca de um vínculo, que este navegador é o da conta que pediu o vínculo.
+    oauthExchange: (code: string) =>
+      request<OAuthExchangeResponse>("/auth/oauth/exchange", {
+        method: "POST",
+        body: JSON.stringify({ code }),
+      }),
+    oauthLinkStart: (provider: OAuthProvider) =>
+      request<{ url: string }>(`/auth/oauth/${provider}/link`, { method: "POST" }),
+    identities: () => request<Identities>("/auth/identities"),
+    unlinkIdentity: (provider: OAuthProvider) =>
+      request<Identities>(`/auth/identities/${provider}`, { method: "DELETE" }),
   },
   settings: {
     getGithubTokenStatus: () => request<GithubTokenStatus>("/settings/github-token"),

@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     # os nomes ao configurar os mappers, e importar de verdade aqui
     # criaria ciclo entre os módulos de modelo.
     from app.models.github_credential import GithubCredential
+    from app.models.oauth_identity import OAuthIdentity
     from app.models.repository import Repository
 
 
@@ -21,7 +22,10 @@ class User(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    # NULL = conta criada pelo login social que nunca definiu senha. Entrar por
+    # e-mail e senha falha para ela como para qualquer senha errada; o "esqueci
+    # a senha" continua disponível para definir uma.
+    hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
     username: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -30,5 +34,8 @@ class User(Base):
         back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
     repositories: Mapped[list["Repository"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    oauth_identities: Mapped[list["OAuthIdentity"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )

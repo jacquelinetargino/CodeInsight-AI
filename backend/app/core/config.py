@@ -1,7 +1,7 @@
 from functools import lru_cache
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -73,6 +73,28 @@ class Settings(BaseSettings):
     email_from: str | None = None
     email_from_name: str = "CodeInsight AI"
     password_reset_expire_minutes: int = 30
+    # Intervalo mínimo entre dois e-mails de redefinição para a MESMA conta. O
+    # limite por IP da rota não impede que vários IPs encham a caixa de alguém.
+    password_reset_cooldown_seconds: int = 60
+
+    # Base dos links que saem do backend para o navegador (e-mail de
+    # redefinição, retorno do login social). Sem valor, vale a primeira origem
+    # de FRONTEND_URL — o que quebra em silêncio se a lista começar por
+    # http://localhost. Definir explicitamente remove essa dependência de ordem.
+    public_frontend_url_override: str | None = Field(default=None, alias="PUBLIC_FRONTEND_URL")
+
+    # --- Login social (OPCIONAL) ---
+    # Cada provedor só aparece habilitado com id E secret definidos. Os secrets
+    # existem só aqui, no backend: o navegador nunca os vê.
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    # Nome com OAUTH de propósito: não confundir com GITHUB_TOKEN (PAT do
+    # servidor para a API) nem com o PAT que cada usuário cola nas
+    # configurações. Este app OAuth serve SÓ para identificar quem entra.
+    github_oauth_client_id: str | None = None
+    github_oauth_client_secret: str | None = None
+    # Validade do "state" + PKCE guardados no cookie durante a ida ao provedor.
+    oauth_state_max_age_seconds: int = 600
 
     # --- Provedor de IA (LEGACY/OPCIONAL) ---
     # A análise principal é feita pelo CodeInsight Engine, em Python, sem IA
@@ -140,8 +162,30 @@ class Settings(BaseSettings):
 
     @property
     def public_frontend_url(self) -> str:
-        """Base dos links enviados por e-mail: a primeira origem de FRONTEND_URL."""
+        """Base dos links enviados ao navegador: PUBLIC_FRONTEND_URL, ou a
+        primeira origem de FRONTEND_URL."""
+        if self.public_frontend_url_override and self.public_frontend_url_override.strip():
+            return self.public_frontend_url_override.strip().rstrip("/")
         return self.cors_origins[0].rstrip("/") if self.cors_origins else ""
+
+    @property
+    def google_oauth_configured(self) -> bool:
+        return bool(self.google_client_id) and bool(self.google_client_secret)
+
+    @property
+    def github_oauth_configured(self) -> bool:
+        return bool(self.github_oauth_client_id) and bool(self.github_oauth_client_secret)
+
+    def oauth_callback_url(self, provider: str) -> str:
+        """URL de retorno registrada no provedor. Precisa bater caractere por
+        caractere com a cadastrada no Google Cloud / GitHub."""
+        return f"{self.backend_url.rstrip('/')}{self.api_v1_prefix}/auth/oauth/{provider}/callback"
+
+    @property
+    def cookies_secure(self) -> bool:
+        """`Secure` sempre que o backend é servido por HTTPS. Em http://localhost
+        o navegador descartaria um cookie Secure e o login social não fecharia."""
+        return self.is_production or self.backend_url.startswith("https://")
 
     @property
     def ai_configured(self) -> bool:

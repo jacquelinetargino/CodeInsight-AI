@@ -1,6 +1,7 @@
 import { AlertCircle, CheckCircle2, ExternalLink, KeyRound } from "lucide-react";
 import { useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
+import { ConnectedAccounts } from "@/components/settings/ConnectedAccounts";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +32,13 @@ export function SettingsPage() {
     <AppShell>
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
-        <p className="text-muted-foreground">Conecte um token do GitHub (opcional).</p>
+        <p className="text-muted-foreground">
+          Formas de entrar na conta e token do GitHub (opcional).
+        </p>
+      </div>
+
+      <div className="mb-6">
+        <ConnectedAccounts />
       </div>
 
       <Card className="max-w-2xl">

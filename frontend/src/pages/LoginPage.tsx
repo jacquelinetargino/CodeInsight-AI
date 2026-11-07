@@ -1,6 +1,7 @@
-import { AlertCircle, ScanSearch, ShieldCheck, Sparkles, Wand2 } from "lucide-react";
+import { AlertCircle, Loader2, ScanSearch, ShieldCheck, Sparkles, Wand2 } from "lucide-react";
 import { useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { AuthDivider, OAuthButtons } from "@/components/auth/OAuthButtons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 import { ApiError } from "@/lib/api";
+import { oauthErrorMessage } from "@/lib/oauth";
 
 const FEATURES = [
   {
@@ -30,8 +32,12 @@ export function LoginPage() {
   const { isAuthenticated, isLoading, login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [params] = useSearchParams();
+  // Erro de um login social que voltou do provedor (cancelado, expirado…).
+  const oauthError = oauthErrorMessage(params.get("oauth_error"));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const shownError = error ?? oauthError;
 
   if (!isLoading && isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
@@ -72,13 +78,15 @@ export function LoginPage() {
 
       <Card className="w-full max-w-sm">
         <CardContent className="p-6">
+          {shownError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{shownError}</AlertDescription>
+            </Alert>
+          )}
+          <OAuthButtons disabled={submitting} />
+          <AuthDivider />
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
             <div className="space-y-1.5">
               <Label htmlFor="email">E-mail</Label>
               <Input
@@ -97,7 +105,7 @@ export function LoginPage() {
                   to="/forgot-password"
                   className="text-xs font-medium text-primary-text hover:underline"
                 >
-                  Esqueci minha senha
+                  Esqueceu sua senha?
                 </Link>
               </div>
               <Input
@@ -110,6 +118,7 @@ export function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
               {submitting ? "Entrando…" : "Entrar"}
             </Button>
           </form>
