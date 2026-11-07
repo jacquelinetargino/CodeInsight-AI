@@ -11,17 +11,34 @@ ninguém. O porquê técnico está em [`security.md`](security.md#qual-ip-conta-
 isso significa que todos os usuários dividem o mesmo limite — o comportamento de sempre,
 seguro mas restritivo. **Fique assim enquanto a validação abaixo não for feita.**
 
-## O que se espera do Render
+## O que foi medido no Render (2026-11-07)
 
-Fontes secundárias (fórum e artigos; o Render não documenta oficialmente) descrevem o
-caminho cliente → Cloudflare → proxy do Render → app, com o cabeçalho chegando como:
+Fontes secundárias (fórum e artigos) falavam em **duas** entradas — e estavam erradas
+para este serviço. Medido com `GET /health/proxy` (9 leituras normais e 3 tentativas
+de falsificação, a partir de redes do edge da Cloudflare diferentes):
 
 ```
-X-Forwarded-For: <o que o cliente forjar, se forjar>, <seu IP real>, <IP do edge da Cloudflare>
+X-Forwarded-For: <o que o cliente forjar>, <IP real do cliente>, <edge da Cloudflare>, <proxy interno do Render>
 ```
 
-Se for isso, o valor certo é `TRUSTED_PROXY_HOPS=2`. **Não assuma**: a cadeia pode ter
-mais ou menos saltos, e errar para mais deixa o limite burlável. Valide.
+| Posição (da direita) | Quem escreve | O que é |
+|---|---|---|
+| 1 | Render | IP privado do proxy interno (`10.x`) |
+| 2 | Render | IP do edge da Cloudflare que atendeu |
+| 3 | Cloudflare | **IP real do cliente** |
+| 4 em diante | o cliente | o que ele quiser — nunca lido |
+
+- `total` = 3 em todas as leituras normais; o cliente sempre na posição 3 da direita.
+- O edge da Cloudflare (posição 2) **muda a cada requisição** (5 redes diferentes em 9
+  leituras) e o proxy do Render (posição 1) também (3 IPs privados).
+- Entradas forjadas apareceram sempre **à esquerda** (posições 4 e 5), em IPv4 e IPv6.
+- Cabeçalhos `True-Client-IP`/`CF-Connecting-IP` enviados pelo cliente são **recusados
+  pela própria Cloudflare** (403, código 1000).
+- O backend não tem endereço IPv6 (sem registro AAAA): todo cliente chega por IPv4.
+
+Valor em produção: **`TRUSTED_PROXY_HOPS=3`**. Com `2`, a chave seria o IP do edge da
+Cloudflare — diferente a cada requisição, o que esvaziaria o limite. Se o Render mudar
+a cadeia, refaça a validação abaixo.
 
 ## Validação passo a passo
 
