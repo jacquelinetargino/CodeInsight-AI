@@ -37,6 +37,33 @@ export interface GithubTokenStatus {
   connected: boolean;
 }
 
+export type OAuthProvider = "google" | "github";
+
+export interface AuthProviders {
+  google: boolean;
+  github: boolean;
+  password_reset: boolean;
+}
+
+export interface OAuthExchangeResponse {
+  intent: "login" | "link";
+  provider: OAuthProvider;
+  access_token: string | null;
+  token_type: string;
+  user: User | null;
+}
+
+export interface OAuthIdentity {
+  provider: OAuthProvider;
+  email: string | null;
+  created_at: string;
+}
+
+export interface Identities {
+  has_password: boolean;
+  identities: OAuthIdentity[];
+}
+
 export interface CommitSummary {
   sha: string;
   message: string;

@@ -212,6 +212,41 @@ async def test_esqueci_a_senha_responde_igual_para_email_desconhecido(
     assert enviados == []
 
 
+async def test_esqueci_a_senha_nao_dispara_varios_emails_seguidos_para_a_mesma_conta(
+    client, test_user, monkeypatch, email_configurado
+):
+    """O limite por IP não protege a caixa de entrada: pedidos repetidos para a
+    mesma conta, dentro do intervalo, mantêm a resposta e omitem o envio."""
+    auth_routes._ultimo_envio_de_reset.clear()
+    enviados = []
+
+    async def captura(**kwargs):
+        enviados.append(kwargs)
+
+    monkeypatch.setattr(auth_routes, "send_password_reset_email", captura)
+
+    respostas = [
+        await client.post(f"{PREFIX}/auth/forgot-password", json={"email": test_user.email})
+        for _ in range(3)
+    ]
+
+    assert [r.status_code for r in respostas] == [202, 202, 202]
+    assert all(r.json() == {"message": auth_routes.FORGOT_PASSWORD_MESSAGE} for r in respostas)
+    assert len(enviados) == 1
+
+
+def test_public_frontend_url_explicita_vence_a_ordem_de_frontend_url(monkeypatch):
+    """Com FRONTEND_URL começando por localhost, o link do e-mail apontaria para
+    a máquina de quem o recebe. PUBLIC_FRONTEND_URL remove a dependência."""
+    monkeypatch.setenv("FRONTEND_URL", "http://localhost:5173,https://app.exemplo.com")
+    monkeypatch.setenv("PUBLIC_FRONTEND_URL", "https://app.exemplo.com/")
+    get_settings.cache_clear()
+    try:
+        assert get_settings().public_frontend_url == "https://app.exemplo.com"
+    finally:
+        get_settings.cache_clear()
+
+
 async def test_redefinir_troca_a_senha_e_o_link_vale_uma_vez(client, test_user):
     token = create_password_reset_token(str(test_user.id), test_user.hashed_password)
 

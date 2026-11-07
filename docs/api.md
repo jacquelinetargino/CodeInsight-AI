@@ -17,6 +17,13 @@ Todas as rotas usam o prefixo `/api/v1`. Rotas marcadas como **🔒** exigem o h
 | POST | `/auth/forgot-password` | `{email}`. Envia o link de redefinição se a conta existir; responde `202` com a **mesma** mensagem em qualquer caso. `503` sem provedor de e-mail |
 | POST | `/auth/reset-password` | `{token, new_password}`. Troca a senha; `400` se o link for inválido, vencido ou já usado |
 | 🔒 GET | `/auth/me` | Retorna o usuário autenticado |
+| GET | `/auth/providers` | `{google, github, password_reset}` — o que este servidor tem configurado |
+| GET | `/auth/oauth/{google\|github}/start` | Navegação: inicia o login social (state + PKCE em cookie HttpOnly) e redireciona ao provedor. Com `?link_ticket=` inicia um vínculo |
+| GET | `/auth/oauth/{google\|github}/callback` | Navegação: volta do provedor. Redireciona para `/auth/callback#code=…` no frontend, ou para `/login?oauth_error=…` (`cancelled`, `state_mismatch`, `provider_error`, `invalid_token`, `unavailable`, `link_expired`) |
+| POST | `/auth/oauth/exchange` | `{code}`. Troca o código de uso único: `{intent: "login", access_token, user}` ou `{intent: "link", provider}`. `409` se já existe conta com o e-mail (não vincula sozinho) |
+| 🔒 POST | `/auth/oauth/{provider}/link` | `{url}` para iniciar o vínculo da conta logada |
+| 🔒 GET | `/auth/identities` | `{has_password, identities: [{provider, email, created_at}]}` |
+| 🔒 DELETE | `/auth/identities/{provider}` | Desconecta; `409` se for o único meio de entrar |
 
 ## Configurações (`/settings`)
 
@@ -70,3 +77,8 @@ apropriado (`400` validação/entrada inválida, `401` não autenticado, `403` p
 
 `POST /analysis` (10/min por IP) e `POST /analysis/{id}/fix` (20/min por IP) têm
 limites mais baixos por disparar chamadas custosas ao provedor de IA.
+
+Autenticação: `login` 10/min, `register` e `forgot-password` 5/min, `reset-password`
+10/min, `oauth/*/start` e `oauth/*/callback` 20/min, `oauth/exchange` e
+`oauth/*/link` 10/min — todos por IP. `forgot-password` também envia no máximo um
+e-mail por conta a cada 60 s.

@@ -32,3 +32,17 @@ async def get_current_user(
     if user is None or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Usuário não encontrado ou inativo")
     return user
+
+
+async def get_optional_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    """O usuário do Bearer, ou `None` sem token ou com token inválido — para
+    rotas que funcionam anônimas e mudam de comportamento quando há sessão."""
+    if credentials is None:
+        return None
+    try:
+        return await get_current_user(credentials, db)
+    except HTTPException:
+        return None

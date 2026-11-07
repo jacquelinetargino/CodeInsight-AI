@@ -35,6 +35,46 @@ na raiz. Esta página documenta as decisões técnicas.
   `ReactMarkdown` usado para exibir o README gerado não executa scripts.
 - Logout é stateless — não há blocklist de tokens revogados no servidor (ver Roadmap).
 
+## Recuperação de senha
+
+- Token assinado (`itsdangerous`, salt próprio), com prazo (`PASSWORD_RESET_EXPIRE_MINUTES`)
+  e de uso único: leva uma impressão do hash de senha atual, então qualquer troca de
+  senha invalida todos os links emitidos antes. Nada é guardado no banco.
+- `POST /auth/forgot-password` responde igual exista ou não a conta, e envia em
+  segundo plano — nem o conteúdo nem o tempo da resposta revelam quem tem cadastro.
+- Além do limite por IP (5/min), no máximo um e-mail por conta a cada
+  `PASSWORD_RESET_COOLDOWN_SECONDS` (60 s): vários IPs não conseguem encher a caixa de
+  entrada de alguém. Em memória, por processo, como o limitador.
+- O e-mail do destinatário e a chave do Brevo nunca vão para o log.
+
+## Login social (OAuth 2.0 / OpenID Connect)
+
+Detalhes do fluxo em [`oauth.md`](oauth.md). As decisões de segurança:
+
+- **Authorization Code + PKCE (S256)** nos dois provedores, com o client secret só no
+  backend. O navegador nunca vê secret nem token do provedor.
+- **CSRF**: `state` aleatório de 32 bytes, guardado em cookie assinado `HttpOnly`,
+  `SameSite=Lax`, `Secure` em HTTPS, restrito a `/api/v1/auth/oauth` e apagado na volta.
+  Callback sem o cookie, com `state` diferente ou de outro provedor é recusado **antes**
+  de qualquer chamada ao provedor.
+- **`id_token` do Google validado de verdade**: assinatura RS256 pelo JWKS oficial (com
+  uma nova tentativa ao girar a chave), `iss`, `aud`, `exp`, `at_hash` e `nonce`.
+- **Sem open redirect**: os destinos são fixos (provedor oficial ou `PUBLIC_FRONTEND_URL`);
+  nenhum parâmetro `next`/`redirect` é aceito.
+- **Código de troca** cifrado (Fernet com chave derivada do `JWT_SECRET`, separada da
+  `ENCRYPTION_KEY`), válido por 2 minutos, de uso único, no fragmento da URL — que não
+  vai para servidores nem para o `Referer`. O e-mail da pessoa não aparece na URL.
+- **Identidade pelo id estável** do provedor (`sub`/id numérico), nunca pelo e-mail.
+- **Sem vínculo automático por e-mail igual.** Vincular uma conta exige estar logado
+  nela, um ticket de vínculo assinado e de 2 minutos, e — na troca final — o Bearer da
+  mesma conta. Sem a última condição, um atacante iniciaria o vínculo na conta dele e
+  faria a vítima concluí-lo; a conta Google da vítima passaria a entrar na conta do
+  atacante.
+- **Contas sem senha** (`hashed_password` NULL) caem no mesmo caminho do e-mail
+  desconhecido no login por senha: mesmo custo de bcrypt, mesma resposta 401.
+- Nenhum access token do Google ou do GitHub é guardado. O login com GitHub não usa,
+  não cria e não substitui o PAT de análise.
+
 ## Credenciais do GitHub (PAT)
 
 - Nunca obrigatório — repositórios públicos funcionam sem nenhum token do usuário.
@@ -63,7 +103,9 @@ chamadas de leitura à GitHub Contents API).
 ## CORS
 
 `allow_origins` restrito a `FRONTEND_URL` (não `*`). `allow_credentials=False` — não é
-necessário, já que a autenticação não usa cookies.
+necessário, já que a autenticação não usa cookies. O único cookie da aplicação, o
+`state` do login social, só circula em navegações de página inteira para o próprio
+backend, nunca em `fetch` entre origens.
 
 ## Rate limiting
 

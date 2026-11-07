@@ -1,4 +1,4 @@
-import { AlertCircle, MailCheck } from "lucide-react";
+import { AlertCircle, Info, Loader2, MailCheck } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { AuthShell } from "@/components/layout/AuthShell";
@@ -6,9 +6,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuthProviders } from "@/hooks/useOAuth";
 import { ApiError, api } from "@/lib/api";
 
 export function ForgotPasswordPage() {
+  const { data: providers } = useAuthProviders();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   // A mensagem vem do backend e é a mesma exista ou não a conta.
@@ -48,6 +50,15 @@ export function ForgotPasswordPage() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
+          {providers?.password_reset === false && !error && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                O envio de e-mail de recuperação não está disponível neste servidor no momento. Se
+                você entrava com Google ou GitHub, use o mesmo botão na tela de login.
+              </AlertDescription>
+            </Alert>
+          )}
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -66,6 +77,7 @@ export function ForgotPasswordPage() {
             />
           </div>
           <Button type="submit" className="w-full" disabled={submitting}>
+            {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
             {submitting ? "Enviando…" : "Enviar link"}
           </Button>
         </form>
