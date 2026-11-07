@@ -75,8 +75,12 @@ Variáveis de ambiente:
 | `ENCRYPTION_KEY` | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` (precisa do pacote `cryptography` — use o Python do venv do backend) |
 | `APP_ENV` | `production` |
 | `FRONTEND_URL` | URL da Vercel (passo 3) — usada pelo CORS |
+| `PUBLIC_FRONTEND_URL` | URL da Vercel — destino do link do e-mail e da volta do login social |
+| `BACKEND_URL` | `https://<serviço>.onrender.com` — forma as callbacks do login social |
 
-Opcional — "esqueci a senha" (ver [`configuration.md`](configuration.md#e-mail-recuperação-de-senha)):
+"Esqueci a senha" (ver [`configuration.md`](configuration.md#e-mail-recuperação-de-senha)).
+Sem estas três, a rota responde 503 — foi o que deixou a recuperação de senha fora do
+ar em produção:
 
 | Chave | Valor |
 |---|---|
@@ -84,7 +88,13 @@ Opcional — "esqueci a senha" (ver [`configuration.md`](configuration.md#e-mail
 | `BREVO_API_KEY` | chave do Brevo — só aqui, nunca na Vercel |
 | `EMAIL_FROM` | o remetente verificado no Brevo |
 
-`FRONTEND_URL` precisa começar pela URL da Vercel: é dela que sai o link do e-mail.
+Opcional — login com Google e GitHub (passo a passo em [`oauth.md`](oauth.md); ordem
+de publicação e checklist de testes em [`auth-go-live.md`](auth-go-live.md)):
+
+| Chave | Valor |
+|---|---|
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | cliente OAuth do Google Cloud — só aqui |
+| `GITHUB_OAUTH_CLIENT_ID` / `GITHUB_OAUTH_CLIENT_SECRET` | OAuth App do GitHub — só aqui |
 
 Opcional — recursos de IA (README, correções, sugestões) com a Groq gratuita:
 
@@ -126,6 +136,9 @@ várias origens separadas por vírgula).
 - `GET /` no backend responde 404 — esperado, não há rota na raiz.
 - Preflight de CORS com `Origin: <url da Vercel>` deve devolver
   `access-control-allow-origin` com essa mesma origem.
+- `GET https://<serviço>.onrender.com/api/v1/auth/providers` mostra o que está
+  configurado: `{"google": …, "github": …, "password_reset": …}`. `password_reset: false`
+  significa que "esqueci a senha" vai responder 503.
 
 ## Checklist antes de ir para produção
 

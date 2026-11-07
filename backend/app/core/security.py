@@ -79,11 +79,13 @@ def _reset_serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(settings.jwt_secret, salt=_RESET_SALT)
 
 
-def _password_fingerprint(hashed_password: str) -> str:
-    return hashlib.sha256(hashed_password.encode()).hexdigest()[:16]
+def _password_fingerprint(hashed_password: str | None) -> str:
+    # Conta do login social sem senha: a impressão é a do "nada". Definir a
+    # primeira senha muda o hash e invalida o link do mesmo jeito.
+    return hashlib.sha256((hashed_password or "").encode()).hexdigest()[:16]
 
 
-def create_password_reset_token(user_id: str, hashed_password: str) -> str:
+def create_password_reset_token(user_id: str, hashed_password: str | None) -> str:
     return _reset_serializer().dumps({"sub": user_id, "pw": _password_fingerprint(hashed_password)})
 
 
@@ -103,5 +105,5 @@ def read_password_reset_token(token: str) -> tuple[str, str] | None:
     return sub, pw
 
 
-def password_fingerprint_matches(fingerprint: str, hashed_password: str) -> bool:
+def password_fingerprint_matches(fingerprint: str, hashed_password: str | None) -> bool:
     return hmac.compare_digest(fingerprint, _password_fingerprint(hashed_password))

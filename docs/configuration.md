@@ -11,8 +11,9 @@ Todas as variáveis de ambiente ficam num único `.env` na raiz do projeto (lido
 | `APP_ENV` | `development` | `development` ou `production` (afeta cookies/CORS se aplicável) |
 | `APP_NAME` | `CodeInsight AI` | Nome exibido |
 | `API_V1_PREFIX` | `/api/v1` | Prefixo das rotas da API |
-| `FRONTEND_URL` | `http://localhost:5173` | Usado pelo CORS |
-| `BACKEND_URL` | `http://localhost:8000` | — |
+| `FRONTEND_URL` | `http://localhost:5173` | Origens do CORS, separadas por vírgula |
+| `BACKEND_URL` | `http://localhost:8000` | URL pública do backend. Forma a callback do login social e liga o atributo `Secure` dos cookies quando começa com `https://` |
+| `PUBLIC_FRONTEND_URL` | primeira origem de `FRONTEND_URL` | Para onde apontam o link do e-mail de redefinição e a volta do login social. Defina explicitamente em produção |
 
 ## Banco de dados
 
@@ -51,9 +52,21 @@ repositório analisado é dado de terceiros e pode ser hostil.
 |---|---|
 | `GITHUB_TOKEN` | **Opcional.** Token do servidor (não do usuário) para elevar o rate limit de requisições não autenticadas (60/h → 5000/h) ao analisar repositórios públicos. Crie em [github.com/settings/tokens](https://github.com/settings/tokens), sem escopos especiais. |
 
-Não há `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET` — o projeto não usa OAuth App do
-GitHub. PATs de usuário são conectados pela própria interface (Configurações), não
-via variável de ambiente.
+PATs de usuário são conectados pela própria interface (Configurações), não via
+variável de ambiente. O OAuth App do GitHub existe **só para o login**
+(`GITHUB_OAUTH_CLIENT_ID`/`GITHUB_OAUTH_CLIENT_SECRET`, abaixo) e não dá acesso a
+repositório nenhum.
+
+## Login social (Google e GitHub)
+
+Opcional. Cada provedor fica habilitado com as duas variáveis dele definidas. Passo a
+passo, URLs de callback e o fluxo completo em [`oauth.md`](oauth.md).
+
+| Variável | Descrição |
+|---|---|
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Cliente OAuth "Aplicativo da Web" do Google Cloud |
+| `GITHUB_OAUTH_CLIENT_ID` / `GITHUB_OAUTH_CLIENT_SECRET` | OAuth App do GitHub (escopos `read:user user:email`) |
+| `OAUTH_STATE_MAX_AGE_SECONDS` | Validade do `state`/PKCE durante a ida ao provedor (padrão `600`) |
 
 ## E-mail (recuperação de senha)
 
@@ -68,11 +81,16 @@ gratuito do Render bloqueia as portas 25/465/587.
 | `EMAIL_FROM` | Remetente, verificado no Brevo (*Senders, Domains & Dedicated IPs*) |
 | `EMAIL_FROM_NAME` | Nome do remetente (padrão `CodeInsight AI`) |
 | `PASSWORD_RESET_EXPIRE_MINUTES` | Validade do link (padrão `30`) |
+| `PASSWORD_RESET_COOLDOWN_SECONDS` | Intervalo mínimo entre dois e-mails para a mesma conta (padrão `60`). A resposta é a mesma dentro do intervalo; só o envio é omitido |
 
-O link enviado aponta para a **primeira** origem de `FRONTEND_URL` +
-`/reset-password?token=...`. O token é assinado com o `JWT_SECRET` e leva uma
-impressão do hash de senha atual: depois que a senha muda, qualquer link emitido
-antes deixa de valer.
+O link enviado aponta para `PUBLIC_FRONTEND_URL` (ou, sem ela, a **primeira** origem
+de `FRONTEND_URL`) + `/reset-password?token=...`. O token é assinado com o
+`JWT_SECRET` e leva uma impressão do hash de senha atual: depois que a senha muda,
+qualquer link emitido antes deixa de valer.
+
+Sem provedor configurado, o backend registra um aviso nos logs ao subir
+(`E-mail não configurado ... 'esqueci a senha' vai responder 503`) e a tela "Esqueci
+minha senha" avisa que o envio está indisponível.
 
 ## Provedor de IA
 

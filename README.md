@@ -82,9 +82,9 @@ Nunca coloque credenciais reais no README, em issues, ou em qualquer arquivo ver
 
 ## Funcionalidades
 
-- **Autenticação própria**: cadastro/login por e-mail e senha (hash bcrypt), JWT, logout, rotas protegidas
+- **Autenticação própria**: cadastro/login por e-mail e senha (hash bcrypt), JWT, logout, rotas protegidas, recuperação de senha por e-mail e, opcionalmente, **login com Google e GitHub** (OAuth com PKCE — veja [`docs/oauth.md`](docs/oauth.md))
 - **Dashboard**: repositórios analisados, quantidade de análises, score médio, problemas encontrados, melhorias sugeridas, histórico recente
-- **Integração com GitHub sem OAuth**: analise qualquer repositório público só com `owner/repo` ou a URL; conecte opcionalmente um Personal Access Token para repositórios privados e listagem automática dos seus repositórios
+- **Análise de GitHub sem OAuth**: o login com GitHub (opcional) só identifica você; analise qualquer repositório público só com `owner/repo` ou a URL; conecte opcionalmente um Personal Access Token para repositórios privados e listagem automática dos seus repositórios
 - **Dados ricos do repositório**: nome, descrição, linguagens, branches, commits, issues, pull requests, contribuidores e estrutura de arquivos
 - **Análise estática em 8 dimensões**, sem IA: segurança, qualidade, dependências, arquitetura, testes, configuração, documentação e git
 - **Achados rastreáveis**: cada um traz identificador de regra, severidade, arquivo, linha, evidência, **confiança** e o **método de detecção** — árvore sintática, busca textual ou metadados. Boa parte da análise é heurística, e a dúvida é declarada em vez de escondida
@@ -137,7 +137,7 @@ Documentação detalhada em [`docs/architecture.md`](docs/architecture.md).
 
 ## Como funciona
 
-1. Você cria uma conta (e-mail/senha) e faz login — recebe um token JWT.
+1. Você cria uma conta (e-mail/senha, ou Google/GitHub) e faz login — recebe um token JWT.
 2. Informa `owner/repo` ou cola a URL de um repositório do GitHub (público — nenhum
    token necessário). Opcionalmente conecta um Personal Access Token em
    **Configurações** para repositórios privados.

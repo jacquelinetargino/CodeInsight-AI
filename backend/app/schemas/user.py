@@ -1,4 +1,6 @@
 import uuid
+from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -58,6 +60,43 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserRead
+
+
+class AuthProvidersRead(BaseModel):
+    """O que este servidor tem configurado — o frontend desabilita o resto."""
+
+    google: bool
+    github: bool
+    password_reset: bool
+
+
+class OAuthExchangeRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=4096)
+
+
+class OAuthExchangeResponse(BaseModel):
+    intent: Literal["login", "link"]
+    provider: str
+    access_token: str | None = None
+    token_type: str = "bearer"
+    user: UserRead | None = None
+
+
+class OAuthLinkStart(BaseModel):
+    url: str
+
+
+class OAuthIdentityRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    provider: str
+    email: str | None
+    created_at: datetime
+
+
+class IdentitiesRead(BaseModel):
+    has_password: bool
+    identities: list[OAuthIdentityRead]
 
 
 class ForgotPasswordRequest(BaseModel):

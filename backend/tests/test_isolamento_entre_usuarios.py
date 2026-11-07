@@ -319,6 +319,16 @@ def test_toda_rota_de_negocio_exige_autenticacao():
         # token assinado de uso único que só o dono da caixa de e-mail recebe.
         f"{PREFIX}/auth/forgot-password",
         f"{PREFIX}/auth/reset-password",
+        # Só diz quais provedores de login estão configurados (booleanos).
+        f"{PREFIX}/auth/providers",
+        # Login social: quem chega aqui ainda não tem token. start e callback são
+        # navegações de página inteira (o navegador não manda Bearer nelas); a
+        # proteção é o state em cookie HttpOnly + PKCE. A troca exige um código
+        # cifrado, de uso único e 2 minutos — e, para VINCULAR uma conta, o
+        # Bearer da mesma conta, conferido dentro de `link_identity`.
+        f"{PREFIX}/auth/oauth/{{provider}}/start",
+        f"{PREFIX}/auth/oauth/{{provider}}/callback",
+        f"{PREFIX}/auth/oauth/exchange",
     }
 
     desprotegidas = set()

@@ -1,3 +1,4 @@
+import time
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
@@ -37,7 +38,9 @@ async def register(
     request: Request, payload: UserCreate, db: AsyncSession = Depends(get_db)
 ) -> TokenResponse:
     users = UserRepository(db)
-    if await users.get_by_email(payload.email) is not None:
+    # Sem diferenciar maiúsculas: "Ana@x.com" e "ana@x.com" são a mesma caixa
+    # de entrada, e duas contas para ela é exatamente o duplicado a evitar.
+    if await users.email_taken(payload.email):
         raise HTTPException(status.HTTP_409_CONFLICT, "E-mail já cadastrado")
 
     user = await users.create(
@@ -65,10 +68,14 @@ async def login(
     # `user is None or not verify_password(...)` curto-circuitava e devolvia o
     # 401 do e-mail desconhecido em 0,9 ms contra 213 ms do cadastrado — ver
     # `dummy_password_hash`.
-    hash_conferido = user.hashed_password if user is not None else dummy_password_hash()
+    #
+    # Conta criada pelo login social, sem senha, cai no mesmo caminho do e-mail
+    # desconhecido: mesmo custo, mesma resposta.
+    hash_proprio = user.hashed_password if user is not None else None
+    hash_conferido = hash_proprio if hash_proprio is not None else dummy_password_hash()
     senha_confere = verify_password(payload.password, hash_conferido)
 
-    if user is None or not senha_confere:
+    if user is None or hash_proprio is None or not senha_confere:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-mail ou senha inválidos")
     if not user.is_active:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Usuário desativado")
@@ -83,6 +90,32 @@ FORGOT_PASSWORD_MESSAGE = (
     "Se houver uma conta com este e-mail, enviamos um link para redefinir a senha."
 )
 INVALID_RESET_LINK_MESSAGE = "Link inválido ou expirado. Peça um novo."
+
+# Último envio de e-mail de redefinição por conta (relógio monotônico).
+#
+# O limite por IP da rota (5/min) não protege a CAIXA DE ENTRADA de alguém:
+# vários IPs pedindo para o mesmo e-mail continuariam disparando mensagens.
+# Dentro do intervalo, a resposta é a mesma de sempre — só o envio é omitido,
+# então isto também não vira oráculo de "esta conta existe".
+#
+# Em memória, como o limitador: vale por processo (o Render roda um worker só).
+_ultimo_envio_de_reset: dict[uuid.UUID, float] = {}
+
+
+def reset_email_allowed(user_id: uuid.UUID) -> bool:
+    agora = time.monotonic()
+    intervalo = get_settings().password_reset_cooldown_seconds
+    anterior = _ultimo_envio_de_reset.get(user_id)
+    if anterior is not None and agora - anterior < intervalo:
+        return False
+    _ultimo_envio_de_reset[user_id] = agora
+    # Sem limpeza, o dicionário cresceria para sempre; o que passou do
+    # intervalo não serve para mais nada.
+    if len(_ultimo_envio_de_reset) > 10_000:
+        for uid, t in list(_ultimo_envio_de_reset.items()):
+            if agora - t >= intervalo:
+                del _ultimo_envio_de_reset[uid]
+    return True
 
 
 @router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
@@ -101,7 +134,7 @@ async def forgot_password(
         )
 
     user = await UserRepository(db).get_by_email(payload.email)
-    if user is not None and user.is_active:
+    if user is not None and user.is_active and reset_email_allowed(user.id):
         token = create_password_reset_token(str(user.id), user.hashed_password)
         reset_url = f"{settings.public_frontend_url}/reset-password?token={token}"
         # Em segundo plano: o tempo de resposta não pode depender de haver

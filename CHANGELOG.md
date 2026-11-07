@@ -7,6 +7,19 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+### Adicionado
+
+- **Login com Google e GitHub** ("Continuar com Google/GitHub"), por Authorization Code
+  com PKCE e `state` em cookie `HttpOnly`; no Google, o `id_token` é validado por
+  assinatura, `iss`, `aud`, `exp` e `nonce`. A conta é identificada pelo id estável do
+  provedor, guardado na nova tabela `oauth_identities`. Contas existentes **não** são
+  vinculadas por e-mail igual: o vínculo é feito em Configurações → Contas conectadas,
+  com a pessoa logada. O login com GitHub pede só `read:user user:email` e não toca no
+  PAT de análise de repositórios. Ver `docs/oauth.md`.
+- `GET /auth/providers`, para o frontend saber o que o servidor tem configurado.
+- `PUBLIC_FRONTEND_URL`: destino explícito do link de redefinição e da volta do login
+  social, sem depender da ordem de `FRONTEND_URL`.
+
 ### Corrigido
 
 - **Atrás do proxy do Render, todos os usuários dividiam o mesmo limite de taxa.** A chave
@@ -18,6 +31,19 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
   o valor só deve ser ativado depois de validado com o novo `GET /health/proxy`
   (desligado por padrão, IPs mascarados) — ver `docs/proxy-ip.md`. Os limites não
   mudaram.
+- **"Esqueci a senha" respondia 503 em produção sem nenhum sinal.** O código estava
+  certo; faltavam `EMAIL_PROVIDER`, `BREVO_API_KEY` e `EMAIL_FROM` no Render. O backend
+  agora avisa nos logs ao subir sem provedor de e-mail, e a tela de recuperação avisa
+  que o envio está indisponível antes de a pessoa tentar.
+- Pedidos repetidos de redefinição para a mesma conta disparavam um e-mail cada (só
+  havia limite por IP). Agora sai no máximo um por conta a cada 60 s, com a mesma
+  resposta.
+- O cadastro aceitava o mesmo e-mail com maiúsculas diferentes como outra conta.
+
+### Alterado
+
+- Migration 0004 (aditiva): cria `oauth_identities` e permite `users.hashed_password`
+  NULL, para contas criadas pelo login social. Nenhuma linha existente muda.
 
 ## [0.3.5] - 2026-10-05
 

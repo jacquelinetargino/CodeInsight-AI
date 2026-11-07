@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { api, ApiError } from "@/lib/api";
 import { tokenStorage } from "@/lib/tokenStorage";
 import { useAuthStore } from "@/store/authStore";
+import type { User } from "@/types";
 
 export function useAuth() {
   const { user, setUser, setLoading, isLoading } = useAuthStore();
@@ -39,6 +40,14 @@ export function useAuth() {
     setUser(loggedInUser);
   }
 
+  /** Fecha um login feito por outro caminho (login social): mesma sessão, mesmo
+   *  armazenamento do login por senha. */
+  function completeLogin(accessToken: string, loggedInUser: User) {
+    tokenStorage.set(accessToken);
+    queryClient.setQueryData(["auth", "me"], loggedInUser);
+    setUser(loggedInUser);
+  }
+
   async function register(email: string, password: string, username: string) {
     const { access_token, user: newUser } = await api.auth.register({ email, password, username });
     tokenStorage.set(access_token);
@@ -62,6 +71,7 @@ export function useAuth() {
     isLoading: isLoading || (hasToken && query.isLoading),
     isAuthenticated: !!user,
     login,
+    completeLogin,
     register,
     logout,
   };
