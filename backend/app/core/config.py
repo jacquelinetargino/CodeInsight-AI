@@ -23,6 +23,13 @@ def _adapt_libpq_params(url: str) -> str:
     return urlunsplit(parts._replace(query=urlencode(params)))
 
 
+GOOGLE_CLIENT_ID_SUFFIX = ".apps.googleusercontent.com"
+
+
+def _looks_like_url_or_blank(value: str) -> bool:
+    return not value or "://" in value or "/" in value or any(c.isspace() for c in value)
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -180,12 +187,31 @@ class Settings(BaseSettings):
         return self.cors_origins[0].rstrip("/") if self.cors_origins else ""
 
     @property
+    def google_client_id_valid(self) -> bool:
+        """Um ID de cliente do Google sempre termina em `.apps.googleusercontent.com`.
+
+        Existe porque um valor trocado passa despercebido: em produção a variável
+        recebeu a URL de callback, o botão aparecia habilitado e todo login
+        terminava em `invalid_client` na tela do Google."""
+        cid = (self.google_client_id or "").strip()
+        return cid.endswith(GOOGLE_CLIENT_ID_SUFFIX) and not _looks_like_url_or_blank(cid)
+
+    @property
+    def github_client_id_valid(self) -> bool:
+        """O GitHub não documenta um formato fixo (`Iv1.…`, `Ov23li…`), mas um ID
+        nunca é URL nem tem espaço — o mesmo erro de colar o valor errado."""
+        cid = (self.github_oauth_client_id or "").strip()
+        return bool(cid) and not _looks_like_url_or_blank(cid)
+
+    @property
     def google_oauth_configured(self) -> bool:
-        return bool(self.google_client_id) and bool(self.google_client_secret)
+        # Com o ID inválido, o provedor fica DESLIGADO: botão desabilitado em vez
+        # de um fluxo que sempre falha na tela do Google.
+        return self.google_client_id_valid and bool(self.google_client_secret)
 
     @property
     def github_oauth_configured(self) -> bool:
-        return bool(self.github_oauth_client_id) and bool(self.github_oauth_client_secret)
+        return self.github_client_id_valid and bool(self.github_oauth_client_secret)
 
     def oauth_callback_url(self, provider: str) -> str:
         """URL de retorno registrada no provedor. Precisa bater caractere por

@@ -21,11 +21,31 @@ if not settings.email_configured:
         "E-mail não configurado (EMAIL_PROVIDER/BREVO_API_KEY/EMAIL_FROM): "
         "'esqueci a senha' vai responder 503."
     )
-for _nome, _ok in (
-    ("Google", settings.google_oauth_configured),
-    ("GitHub", settings.github_oauth_configured),
+for _nome, _ok, _id_preenchido, _id_valido, _dica in (
+    (
+        "Google",
+        settings.google_oauth_configured,
+        bool(settings.google_client_id),
+        settings.google_client_id_valid,
+        "deve terminar em .apps.googleusercontent.com",
+    ),
+    (
+        "GitHub",
+        settings.github_oauth_configured,
+        bool(settings.github_oauth_client_id),
+        settings.github_client_id_valid,
+        "não pode ser URL nem ter espaços",
+    ),
 ):
-    if not _ok:
+    if _id_preenchido and not _id_valido:
+        # WARNING e não INFO: é configuração errada, não ausente. O valor nunca
+        # vai para o log — só o que está errado nele.
+        _logger.warning(
+            "Login com %s DESABILITADO: o client ID configurado não é válido (%s).",
+            _nome,
+            _dica,
+        )
+    elif not _ok:
         _logger.info("Login com %s desabilitado (credenciais OAuth ausentes).", _nome)
 
 app = FastAPI(title=settings.app_name, version=__version__)
