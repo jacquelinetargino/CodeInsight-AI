@@ -1,7 +1,7 @@
 from functools import lru_cache
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -73,6 +73,17 @@ class Settings(BaseSettings):
     email_from: str | None = None
     email_from_name: str = "CodeInsight AI"
     password_reset_expire_minutes: int = 30
+
+    # --- IP do cliente para o rate limit (ver app/core/client_ip.py) ---
+    # Quantos proxies CONFIÁVEIS acrescentam entradas ao X-Forwarded-For antes
+    # de a requisição chegar aqui. 0 = ignora o cabeçalho e usa o IP da conexão
+    # (dev local, Docker Compose, testes). Errar para MAIS é perigoso: a chave
+    # passa a ser uma posição que o cliente controla. Só ative depois de validar
+    # a cadeia real com PROXY_DIAGNOSTICS_ENABLED (docs/proxy-ip.md).
+    trusted_proxy_hops: int = Field(default=0, ge=0, le=5)
+    # Liga GET /health/proxy, que mostra a forma da cadeia de proxies com os IPs
+    # mascarados. Desligado por padrão; ligue só durante a validação.
+    proxy_diagnostics_enabled: bool = False
 
     # --- Provedor de IA (LEGACY/OPCIONAL) ---
     # A análise principal é feita pelo CodeInsight Engine, em Python, sem IA

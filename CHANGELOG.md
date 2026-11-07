@@ -7,6 +7,18 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+### Corrigido
+
+- **Atrás do proxy do Render, todos os usuários dividiam o mesmo limite de taxa.** A chave
+  do rate limit era `request.client.host`, que lá é o IP do proxy interno — 10 tentativas
+  de login por minuto valiam para o site inteiro. A chave passa a ser o IP do cliente,
+  lido do `X-Forwarded-For` contando `TRUSTED_PROXY_HOPS` entradas **da direita**, onde
+  só os proxies escrevem; entradas forjadas pelo cliente ficam à esquerda e são
+  ignoradas. IPv6 conta pelo `/64`. O padrão continua `0` (IP da conexão, como antes):
+  o valor só deve ser ativado depois de validado com o novo `GET /health/proxy`
+  (desligado por padrão, IPs mascarados) — ver `docs/proxy-ip.md`. Os limites não
+  mudaram.
+
 ## [0.3.5] - 2026-10-05
 
 ### Corrigido
