@@ -106,13 +106,14 @@ class FakeProviders:
             {"email": "ana@exemplo.com", "primary": True, "verified": True},
         ]
         self.expected_nonce: str | None = None
+        self.google_token_error: dict = {"error": "invalid_grant"}
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
         url = str(request.url)
         if url == oauth_service.GOOGLE_TOKEN_URL:
             if self.google_token_status != 200:
-                return httpx.Response(self.google_token_status, json={"error": "invalid_grant"})
+                return httpx.Response(self.google_token_status, json=self.google_token_error)
             claims = {
                 "iss": "https://accounts.google.com",
                 "aud": GOOGLE_ID,
@@ -684,3 +685,123 @@ async def test_cadastro_recusa_email_com_outra_caixa(client, test_user):
         json={"email": test_user.email.upper(), "password": "senha-valida-1", "username": "dup"},
     )
     assert response.status_code == 409
+
+
+# --- configuração inválida: o provedor desliga em vez de quebrar ---------------------
+#
+# O caso real: em produção GOOGLE_CLIENT_ID recebeu a URL de callback. O botão
+# aparecia habilitado e todo login terminava em `invalid_client` na tela do Google.
+
+CALLBACK_GOOGLE = "https://codeinsight-ai-89se.onrender.com/api/v1/auth/oauth/google/callback"
+
+
+@pytest.mark.parametrize(
+    ("valor", "valido"),
+    [
+        ("123456789012-abc123def456.apps.googleusercontent.com", True),
+        ("  123-x.apps.googleusercontent.com  ", True),
+        (CALLBACK_GOOGLE, False),
+        ("https://x.apps.googleusercontent.com", False),
+        ("123-x.apps.googleusercontent.com/extra", False),
+        ("123 x.apps.googleusercontent.com", False),
+        ("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rado", False),
+        ("", False),
+        (None, False),
+    ],
+)
+def test_formato_do_client_id_do_google(valor, valido):
+    settings = get_settings().model_copy(update={"google_client_id": valor})
+    assert settings.google_client_id_valid is valido
+
+
+@pytest.mark.parametrize(
+    ("valor", "valido"),
+    [
+        ("Ov23liiMXtb6lyy5fRKS", True),
+        ("Iv1.0123456789abcdef", True),
+        ("https://github.com/settings/applications/123", False),
+        ("Ov23li com espaco", False),
+        ("", False),
+    ],
+)
+def test_formato_do_client_id_do_github(valor, valido):
+    settings = get_settings().model_copy(update={"github_oauth_client_id": valor})
+    assert settings.github_client_id_valid is valido
+
+
+async def test_client_id_do_google_com_url_desliga_o_botao(client, oauth_configurado, monkeypatch):
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", CALLBACK_GOOGLE)
+    get_settings.cache_clear()
+
+    providers = (await client.get(f"{PREFIX}/auth/providers")).json()
+    start = await client.get(f"{PREFIX}/auth/oauth/google/start")
+
+    assert providers["google"] is False
+    assert providers["github"] is True
+    assert start.headers["location"] == f"{FRONT}/login?oauth_error=unavailable"
+
+
+async def test_client_id_do_github_com_url_desliga_o_botao(client, oauth_configurado, monkeypatch):
+    monkeypatch.setenv("GITHUB_OAUTH_CLIENT_ID", "https://github.com/settings/developers")
+    get_settings.cache_clear()
+
+    assert (await client.get(f"{PREFIX}/auth/providers")).json()["github"] is False
+
+
+# --- diagnóstico: o log diz POR QUE o provedor recusou, sem segredo nenhum ------------
+
+
+async def test_recusa_do_google_loga_so_o_codigo_de_erro(
+    client, oauth_configurado, provedores, caplog
+):
+    """`invalid_client` = ID/secret errados; `invalid_grant` = código vencido.
+    Sem isso, os dois apareciam como o mesmo `provider_error`."""
+    provedores.google_token_status = 401
+    provedores.google_token_error = {
+        "error": "invalid_client",
+        "error_description": "Unauthorized segredo-google-ficticio",
+    }
+    caplog.set_level("WARNING")
+
+    callback = await _ida_e_volta(client, provedores, "google")
+
+    assert callback.headers["location"] == f"{FRONT}/login?oauth_error=provider_error"
+    assert "(google): invalid_client" in caplog.text
+    # Nem o secret, nem a descrição livre do provedor, nem o código de autorização.
+    assert "segredo-google-ficticio" not in caplog.text
+    assert "Unauthorized" not in caplog.text
+    assert "codigo-do-provedor" not in caplog.text
+
+
+async def test_recusa_do_github_loga_so_o_codigo_de_erro(
+    client, oauth_configurado, provedores, caplog
+):
+    provedores.github_token_body = {
+        "error": "incorrect_client_credentials",
+        "error_description": "The client_id and/or client_secret passed are incorrect.",
+    }
+    caplog.set_level("WARNING")
+
+    await _ida_e_volta(client, provedores, "github")
+
+    assert "(github): incorrect_client_credentials" in caplog.text
+    assert "client_secret passed" not in caplog.text
+    assert "segredo-github-ficticio" not in caplog.text
+
+
+@pytest.mark.parametrize(
+    "erro",
+    ["<script>alert(1)</script>", "x" * 200, 42, None, "linha\nnova"],
+    ids=["html", "longo", "numero", "nulo", "quebra-de-linha"],
+)
+async def test_codigo_de_erro_estranho_vira_desconhecido(
+    client, oauth_configurado, provedores, caplog, erro
+):
+    """O corpo é do provedor (ou de quem estiver no meio): nada dele vai cru para o log."""
+    provedores.github_token_body = {"error": erro}
+    caplog.set_level("WARNING")
+
+    await _ida_e_volta(client, provedores, "github")
+
+    assert "(github): desconhecido" in caplog.text
+    assert "<script>" not in caplog.text

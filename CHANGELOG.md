@@ -7,6 +7,18 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+### Corrigido
+
+- **Um client ID OAuth trocado deixava o botão habilitado e o login sempre falhando.**
+  Em produção, `GOOGLE_CLIENT_ID` recebeu a URL de callback: o Google respondia
+  `invalid_client` e nada avisava. Agora um ID do Google que não termina em
+  `.apps.googleusercontent.com` (ou um do GitHub que seja URL ou tenha espaço) desliga
+  aquele provedor, com aviso no log ao subir — sem nunca imprimir o valor.
+- Recusas do provedor na troca do código passam a ser logadas com o código de erro
+  (`invalid_client`, `invalid_grant`, `incorrect_client_credentials`…), o que distingue
+  secret errado de código vencido. Descrição livre, secrets e códigos de autorização
+  continuam fora do log.
+
 ### Adicionado
 
 - **Login com Google e GitHub** ("Continuar com Google/GitHub"), por Authorization Code

@@ -121,3 +121,39 @@ Nada novo na Vercel: o frontend só conhece `VITE_API_BASE_URL`.
 - "Continuar com Google" deve abrir a tela de escolha de conta do Google. Um erro
   `redirect_uri_mismatch` significa que a URL cadastrada não bate com `BACKEND_URL`.
 - Cancelar na tela do provedor volta para o login com "Login cancelado".
+
+### Client ID inválido desliga o provedor
+
+Um `GOOGLE_CLIENT_ID` que não termina em `.apps.googleusercontent.com` (ou um
+`GITHUB_OAUTH_CLIENT_ID` que seja URL ou tenha espaço) **desliga** aquele login:
+`/auth/providers` responde `false`, o botão fica desabilitado e o backend avisa ao subir:
+
+```
+Login com Google DESABILITADO: o client ID configurado não é válido (...)
+```
+
+Foi o que aconteceu em produção: a variável recebeu a URL de callback no lugar do ID, e
+todo login terminava em `invalid_client` na tela do Google.
+
+### Lendo uma recusa do provedor nos logs
+
+Quando a troca do código por token falha, o log do Render mostra **só o código de erro**
+do provedor (nunca secret, código de autorização nem a descrição livre):
+
+```
+Troca do código OAuth recusada pelo provedor (google): invalid_client
+```
+
+| Código | Provedor | Significa |
+|---|---|---|
+| `invalid_client` | Google | client ID ou **client secret** errados |
+| `incorrect_client_credentials` | GitHub | client ID ou **client secret** errados |
+| `invalid_grant` | Google | código de autorização vencido, já usado ou inválido |
+| `bad_verification_code` | GitHub | idem |
+| `redirect_uri_mismatch` | ambos | a callback enviada não é a cadastrada |
+
+Para conferir um secret **sem revelá-lo**, abra no navegador
+`/api/v1/auth/oauth/{google|github}/start` e, em vez de entrar na conta, edite a URL de
+volta para `/callback?code=teste&state=<o state da URL>`: o provedor recusa o código falso
+com `invalid_grant`/`bad_verification_code` se o par id/secret estiver certo, ou com
+`invalid_client`/`incorrect_client_credentials` se não estiver.

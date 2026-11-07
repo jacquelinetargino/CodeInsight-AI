@@ -30,6 +30,8 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import logging
+import re
 import secrets
 import time
 import uuid
@@ -50,6 +52,8 @@ from app.core.config import get_settings
 from app.models.user import User
 from app.repositories.oauth_identity_repository import OAuthIdentityRepository
 from app.repositories.user_repository import UserRepository
+
+logger = logging.getLogger(__name__)
 
 Provider = Literal["google", "github"]
 Intent = Literal["login", "link"]
@@ -268,6 +272,29 @@ def _decode_google_id_token(
     )
 
 
+def _safe_json(response: httpx.Response) -> dict[str, Any]:
+    try:
+        data = response.json()
+    except ValueError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+# Só o código de erro do provedor — `invalid_client`, `invalid_grant`,
+# `bad_verification_code`, `incorrect_client_credentials`, `redirect_uri_mismatch`.
+# É o que separa "secret errado" de "código expirado" na operação, e não carrega
+# nada sensível. A descrição livre (`error_description`) fica de fora: o
+# provedor pode ecoar parâmetros da requisição nela.
+_ERROR_CODE_RE = re.compile(r"^[a-z0-9_.\-]{1,64}$")
+
+
+def _log_token_refusal(provider: str, body: dict[str, Any]) -> None:
+    codigo = body.get("error")
+    if not isinstance(codigo, str) or not _ERROR_CODE_RE.fullmatch(codigo):
+        codigo = "desconhecido"
+    logger.warning("Troca do código OAuth recusada pelo provedor (%s): %s", provider, codigo)
+
+
 async def _google_profile(code: str, verifier: str, nonce: str) -> ProviderProfile:
     settings = get_settings()
     async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
@@ -285,6 +312,7 @@ async def _google_profile(code: str, verifier: str, nonce: str) -> ProviderProfi
                 headers={"Accept": "application/json"},
             )
             if token_response.status_code != 200:
+                _log_token_refusal("google", _safe_json(token_response))
                 raise OAuthError("provider_error")
             tokens = token_response.json()
             id_token = tokens.get("id_token")
@@ -339,9 +367,10 @@ async def _github_profile(code: str, verifier: str) -> ProviderProfile:
                 headers={"Accept": "application/json"},
             )
             # O GitHub responde 200 mesmo para código inválido, com `error` no corpo.
-            tokens = token_response.json() if token_response.status_code == 200 else {}
+            tokens = _safe_json(token_response)
             access_token = tokens.get("access_token")
             if not isinstance(access_token, str) or not access_token:
+                _log_token_refusal("github", tokens)
                 raise OAuthError("provider_error")
 
             headers = {
