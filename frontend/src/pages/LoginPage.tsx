@@ -130,6 +130,11 @@ export function LoginPage() {
           </p>
         </CardContent>
       </Card>
+      <p className="mt-3 text-center text-xs text-muted-foreground">
+        <Link to="/privacidade" className="hover:underline">
+          Política de privacidade
+        </Link>
+      </p>
 
       <div className="mt-14 grid w-full max-w-3xl gap-4 sm:grid-cols-3">
         {FEATURES.map((f) => (

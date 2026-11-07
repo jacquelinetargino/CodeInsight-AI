@@ -116,6 +116,13 @@ export function RegisterPage() {
           </p>
         </CardContent>
       </Card>
+      <p className="mt-3 max-w-sm text-center text-xs text-muted-foreground">
+        Ao criar a conta, você concorda com a{" "}
+        <Link to="/privacidade" className="font-medium hover:underline">
+          política de privacidade
+        </Link>
+        .
+      </p>
     </div>
   );
 }

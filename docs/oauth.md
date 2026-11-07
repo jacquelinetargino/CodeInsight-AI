@@ -83,6 +83,21 @@ Para isso, `BACKEND_URL` no Render precisa ser `https://codeinsight-ai-89se.onre
 5. Copie o **ID do cliente** e a **Chave secreta do cliente** para o Render:
    `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`.
 
+### Publicando o app (sair do modo Teste)
+
+Em **Teste**, só entram as contas listadas em *Público-alvo → Usuários de teste* (até
+100). Para liberar qualquer conta Google:
+
+1. **Branding**: preencha *Página inicial do app* com
+   `https://code-insight-ai-ashen.vercel.app` e *Link da Política de Privacidade* com
+   `https://code-insight-ai-ashen.vercel.app/privacidade` (a página
+   [`PrivacyPage.tsx`](../frontend/src/pages/PrivacyPage.tsx)). Em *Domínios
+   autorizados*, `code-insight-ai-ashen.vercel.app` e `codeinsight-ai-89se.onrender.com`.
+2. **Público-alvo → Publicar app → Confirmar**. Com só `openid`, `email` e `profile`
+   (escopos não sensíveis), o Google não exige revisão para publicar.
+
+Mudou o que o sistema coleta ou com quem compartilha? Atualize a política no mesmo PR.
+
 ## GitHub Developer Settings
 
 1. Acesse [github.com/settings/developers](https://github.com/settings/developers) →
