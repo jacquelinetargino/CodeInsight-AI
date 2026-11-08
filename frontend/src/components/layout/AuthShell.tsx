@@ -1,5 +1,6 @@
 import { Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -28,6 +29,8 @@ export function AuthShell({
       <Card className="w-full max-w-sm">
         <CardContent className="p-6">{children}</CardContent>
       </Card>
+
+      <SiteFooter className="mt-8" />
     </div>
   );
 }

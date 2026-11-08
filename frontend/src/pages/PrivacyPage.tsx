@@ -1,5 +1,6 @@
 import { ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -207,6 +208,8 @@ export function PrivacyPage() {
           Voltar para o login
         </Link>
       </p>
+
+      <SiteFooter className="mt-4" />
     </div>
   );
 }
