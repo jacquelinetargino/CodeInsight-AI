@@ -2,6 +2,7 @@ import { AlertCircle, Loader2, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { AuthDivider, OAuthButtons } from "@/components/auth/OAuthButtons";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -123,6 +124,8 @@ export function RegisterPage() {
         </Link>
         .
       </p>
+
+      <SiteFooter className="mt-8" />
     </div>
   );
 }
