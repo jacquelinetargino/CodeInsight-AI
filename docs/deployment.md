@@ -128,7 +128,9 @@ funcionar ao recarregar a página. Variáveis `VITE_*` vão embutidas no JavaScr
 público — nunca coloque segredos nelas.
 
 Depois do primeiro deploy, copie a URL da Vercel para `FRONTEND_URL` no Render (aceita
-várias origens separadas por vírgula).
+várias origens separadas por vírgula). Ao ligar um domínio próprio na Vercel, inclua-o
+em `FRONTEND_URL` e aponte `PUBLIC_FRONTEND_URL` para ele — sem isso o site no domínio
+novo abre, mas não consegue chamar a API (CORS).
 
 ### Conferindo
 

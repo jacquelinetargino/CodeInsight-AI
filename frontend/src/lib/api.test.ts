@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, NETWORK_ERROR_MESSAGE, NETWORK_ERROR_STATUS, api } from "@/lib/api";
 
 /**
  * O backend passou a limitar `POST /auth/login` e `POST /auth/register`, então
@@ -21,6 +21,28 @@ function respostaFalsa(status: number, body: unknown) {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe("falha de rede", () => {
+  it("vira ApiError com mensagem de conexão, não um erro genérico", async () => {
+    // É o que o navegador entrega quando o CORS barra a origem: TypeError, sem resposta.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const erro = await api.auth.forgotPassword("alguem@example.com").catch((e) => e);
+
+    expect(erro).toBeInstanceOf(ApiError);
+    expect((erro as ApiError).status).toBe(NETWORK_ERROR_STATUS);
+    expect((erro as ApiError).message).toBe(NETWORK_ERROR_MESSAGE);
+    // A causa técnica fica registrada para diagnóstico.
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
 });
 
 describe("mensagem de erro da API", () => {

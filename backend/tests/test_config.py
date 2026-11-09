@@ -29,7 +29,48 @@ def _settings(**overrides) -> Settings:
     ],
 )
 def test_cors_origins_parsing(frontend_url: str, expected: list[str]) -> None:
-    assert _settings(frontend_url=frontend_url).cors_origins == expected
+    settings = _settings(frontend_url=frontend_url, PUBLIC_FRONTEND_URL=None)
+    assert settings.cors_origins == expected
+
+
+def test_cors_ignora_barra_final() -> None:
+    """O navegador manda `Origin: https://site.com`, sem barra. Com a barra na
+    variável, o CORS recusaria tudo vindo desse site."""
+    settings = _settings(frontend_url="https://site.com/,https://b.com", PUBLIC_FRONTEND_URL=None)
+    assert settings.cors_origins == ["https://site.com", "https://b.com"]
+
+
+def test_cors_libera_o_dominio_publico_mesmo_fora_de_frontend_url() -> None:
+    """Regressão: com o domínio próprio em PUBLIC_FRONTEND_URL e FRONTEND_URL
+    ainda só com o domínio antigo, o site novo não conseguia chamar a API e o
+    "esqueci a senha" falhava com "Tente novamente"."""
+    settings = _settings(
+        frontend_url="https://antigo.vercel.app",
+        PUBLIC_FRONTEND_URL="https://www.codeinsight.app.br/",
+    )
+    assert settings.cors_origins == ["https://antigo.vercel.app", "https://www.codeinsight.app.br"]
+    # O link do e-mail continua indo para o domínio público.
+    assert settings.public_frontend_url == "https://www.codeinsight.app.br"
+
+
+def test_dominio_publico_ja_listado_nao_duplica() -> None:
+    settings = _settings(
+        frontend_url="https://www.codeinsight.app.br,https://antigo.vercel.app",
+        PUBLIC_FRONTEND_URL="https://www.codeinsight.app.br",
+    )
+    assert settings.cors_origins == ["https://www.codeinsight.app.br", "https://antigo.vercel.app"]
+
+
+def test_cors_usa_so_a_origem_do_dominio_publico() -> None:
+    settings = _settings(
+        frontend_url="http://localhost:5173", PUBLIC_FRONTEND_URL="https://app.com/x/"
+    )
+    assert settings.cors_origins == ["http://localhost:5173", "https://app.com"]
+
+
+def test_sem_dominio_publico_o_link_usa_a_primeira_origem() -> None:
+    settings = _settings(frontend_url="https://a.com/,https://b.com", PUBLIC_FRONTEND_URL=None)
+    assert settings.public_frontend_url == "https://a.com"
 
 
 @pytest.mark.parametrize(

@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { OAuthCallbackPage } from "@/pages/OAuthCallbackPage";
 import { useAuthStore } from "@/store/authStore";
@@ -32,6 +33,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   window.history.replaceState(null, "", "/");
 });
 
@@ -72,6 +74,69 @@ describe("tela de login", () => {
     );
     renderEm("/login?oauth_error=cancelled", <LoginPage />);
     expect(screen.getByText(/login cancelado/i)).toBeInTheDocument();
+  });
+});
+
+describe("esqueci minha senha", () => {
+  const PROVIDERS = { google: true, github: true, password_reset: true };
+
+  /** Responde /auth/providers e entrega o POST de recuperação a `onForgot`. */
+  function fetchCom(onForgot: (init?: RequestInit) => Promise<Response>) {
+    return vi.fn(async (url: string, init?: RequestInit) =>
+      url.endsWith("/auth/forgot-password") ? onForgot(init) : resposta(200, PROVIDERS),
+    );
+  }
+
+  async function pedirLink() {
+    renderEm("/forgot-password", <ForgotPasswordPage />);
+    fireEvent.change(screen.getByLabelText(/e-mail/i), {
+      target: { value: "alguem@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /enviar link/i }));
+  }
+
+  it("envia o e-mail digitado e mostra a resposta do servidor", async () => {
+    const fetchMock = fetchCom(async () =>
+      resposta(202, { message: "Se o e-mail estiver cadastrado, enviamos um link." }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await pedirLink();
+
+    expect(await screen.findByText(/enviamos um link/i)).toBeInTheDocument();
+    const chamada = fetchMock.mock.calls.find(([url]) => url.endsWith("/auth/forgot-password"));
+    expect(chamada?.[1]?.method).toBe("POST");
+    expect(JSON.parse(String(chamada?.[1]?.body))).toEqual({ email: "alguem@example.com" });
+  });
+
+  it("sem conexão com o servidor (ex.: CORS), diz isso — e não finge sucesso", async () => {
+    vi.stubGlobal(
+      "fetch",
+      fetchCom(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await pedirLink();
+
+    expect(await screen.findByText(/não foi possível conectar ao servidor/i)).toBeInTheDocument();
+    expect(screen.queryByText(/enviamos um link/i)).not.toBeInTheDocument();
+  });
+
+  it("mostra o erro real do servidor", async () => {
+    vi.stubGlobal(
+      "fetch",
+      fetchCom(async () =>
+        resposta(503, {
+          detail: "A recuperação de senha por e-mail não está configurada neste servidor.",
+        }),
+      ),
+    );
+
+    await pedirLink();
+
+    expect(await screen.findByText(/não está configurada neste servidor/i)).toBeInTheDocument();
   });
 });
 
