@@ -102,7 +102,7 @@ chamadas de leitura à GitHub Contents API).
 
 ## CORS
 
-`allow_origins` restrito a `FRONTEND_URL` (não `*`). `allow_credentials=False` — não é
+`allow_origins` restrito a `FRONTEND_URL` mais a origem de `PUBLIC_FRONTEND_URL` (não `*`). `allow_credentials=False` — não é
 necessário, já que a autenticação não usa cookies. O único cookie da aplicação, o
 `state` do login social, só circula em navegações de página inteira para o próprio
 backend, nunca em `fetch` entre origens.

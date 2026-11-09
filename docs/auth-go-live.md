@@ -34,7 +34,7 @@ do backend mudar (domínio próprio, por exemplo), atualize `PUBLIC_FRONTEND_URL
 | `BREVO_API_KEY` | chave de API do Brevo — **secreta** | Recuperação de senha |
 | `EMAIL_FROM` | remetente verificado no Brevo | Recuperação de senha |
 | `EMAIL_FROM_NAME` | `CodeInsight AI` (opcional) | Recuperação de senha |
-| `PUBLIC_FRONTEND_URL` | `https://code-insight-ai-ashen.vercel.app` | Link do e-mail e volta do login social |
+| `PUBLIC_FRONTEND_URL` | `https://www.codeinsight.app.br` | Link do e-mail e volta do login social (também liberada no CORS) |
 | `BACKEND_URL` | `https://codeinsight-ai-89se.onrender.com` (sem barra no final) | Forma os callbacks |
 | `GOOGLE_CLIENT_ID` | ID do cliente OAuth do Google | Login com Google |
 | `GOOGLE_CLIENT_SECRET` | chave secreta do cliente — **secreta** | Login com Google |
@@ -44,7 +44,10 @@ do backend mudar (domínio próprio, por exemplo), atualize `PUBLIC_FRONTEND_URL
 Confira também as que já existem:
 
 - `APP_ENV=production`.
-- `FRONTEND_URL` contém o domínio da Vercel (é o CORS).
+- `FRONTEND_URL` contém todos os domínios em que o site abre (é o CORS): o próprio
+  (`https://www.codeinsight.app.br`) e o da Vercel. Um domínio fora da lista não
+  consegue chamar a API — o navegador barra o pedido e a tela mostra "Não foi possível
+  conectar ao servidor".
 - `JWT_SECRET` **não muda**: além das sessões, ele assina o `state`, o ticket de vínculo
   e o código de troca do login social. Trocá-lo desconecta todo mundo.
 

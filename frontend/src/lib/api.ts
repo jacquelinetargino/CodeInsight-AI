@@ -58,16 +58,33 @@ function extractErrorMessage(body: unknown, status: number): string {
   return `Erro ${status}`;
 }
 
+/** `status` de um `ApiError` quando nenhuma resposta HTTP chegou. */
+export const NETWORK_ERROR_STATUS = 0;
+
+export const NETWORK_ERROR_MESSAGE =
+  "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente em instantes.";
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = tokenStorage.get();
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+  } catch (err) {
+    // O `fetch` só rejeita quando não houve resposta: sem rede, servidor fora
+    // do ar ou origem barrada pelo CORS — o navegador não diz qual. Antes, cada
+    // tela caía num "Tente novamente" genérico e a causa sumia; foi assim que um
+    // CORS sem o domínio novo passou por erro de envio de e-mail. O detalhe
+    // técnico fica no console para quem for investigar.
+    console.error(`Falha de rede ao chamar ${path}:`, err);
+    throw new ApiError(NETWORK_ERROR_STATUS, NETWORK_ERROR_MESSAGE);
+  }
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));

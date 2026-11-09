@@ -9,6 +9,13 @@ e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ### Corrigido
 
+- **"Esqueci minha senha" falhava no domínio próprio (`www.codeinsight.app.br`)** com
+  "Não foi possível enviar o pedido. Tente novamente." O backend não liberava a origem
+  nova no CORS, o navegador barrava o pedido antes de ele chegar ao servidor e a tela
+  mostrava um erro genérico. Agora a origem de `PUBLIC_FRONTEND_URL` entra sempre no
+  CORS (o site para onde os links mandam a pessoa precisa conseguir chamar a API), a
+  barra final em `FRONTEND_URL` é ignorada, e uma falha de rede aparece como "Não foi
+  possível conectar ao servidor" em todas as telas, com o detalhe no console.
 - **Um client ID OAuth trocado deixava o botão habilitado e o login sempre falhando.**
   Em produção, `GOOGLE_CLIENT_ID` recebeu a URL de callback: o Google respondia
   `invalid_client` e nada avisava. Agora um ID do Google que não termina em

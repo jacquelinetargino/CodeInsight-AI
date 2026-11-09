@@ -11,7 +11,7 @@ Todas as variáveis de ambiente ficam num único `.env` na raiz do projeto (lido
 | `APP_ENV` | `development` | `development` ou `production` (afeta cookies/CORS se aplicável) |
 | `APP_NAME` | `CodeInsight AI` | Nome exibido |
 | `API_V1_PREFIX` | `/api/v1` | Prefixo das rotas da API |
-| `FRONTEND_URL` | `http://localhost:5173` | Origens do CORS, separadas por vírgula |
+| `FRONTEND_URL` | `http://localhost:5173` | Origens do CORS, separadas por vírgula (a barra final é ignorada). A origem de `PUBLIC_FRONTEND_URL` entra no CORS automaticamente |
 | `BACKEND_URL` | `http://localhost:8000` | URL pública do backend. Forma a callback do login social e liga o atributo `Secure` dos cookies quando começa com `https://` |
 | `PUBLIC_FRONTEND_URL` | primeira origem de `FRONTEND_URL` | Para onde apontam o link do e-mail de redefinição e a volta do login social. Defina explicitamente em produção |
 

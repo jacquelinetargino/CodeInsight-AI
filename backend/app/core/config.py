@@ -23,6 +23,15 @@ def _adapt_libpq_params(url: str) -> str:
     return urlunsplit(parts._replace(query=urlencode(params)))
 
 
+def _origin_of(url: str) -> str:
+    """`https://site.com/qualquer/caminho` → `https://site.com` (o que o
+    navegador manda em `Origin`). Sem esquema, devolve o texto como veio."""
+    parts = urlsplit(url.strip())
+    if not parts.scheme or not parts.netloc:
+        return url.strip()
+    return f"{parts.scheme}://{parts.netloc}"
+
+
 GOOGLE_CLIENT_ID_SUFFIX = ".apps.googleusercontent.com"
 
 
@@ -43,7 +52,25 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> list[str]:
-        return [origin.strip() for origin in self.frontend_url.split(",") if origin.strip()]
+        """Origens liberadas no CORS: as de FRONTEND_URL e a de PUBLIC_FRONTEND_URL.
+
+        PUBLIC_FRONTEND_URL entra sempre: é para lá que o e-mail de redefinição
+        e o login social mandam a pessoa, então o site nesse endereço PRECISA
+        conseguir chamar a API. Foi esse descompasso que quebrou o "esqueci a
+        senha" no domínio próprio: o site novo existia, o CORS não o conhecia, o
+        navegador barrava o pedido e a tela só dizia "Tente novamente".
+
+        A barra final sai porque o navegador manda `Origin` sem ela — com
+        `https://site.com/` na lista, nenhuma origem casaria."""
+        candidatas = self.frontend_url.split(",")
+        if self.public_frontend_url_override:
+            candidatas.append(_origin_of(self.public_frontend_url_override))
+        origens: list[str] = []
+        for candidata in candidatas:
+            origem = candidata.strip().rstrip("/")
+            if origem and origem not in origens:
+                origens.append(origem)
+        return origens
 
     database_url: str
 
